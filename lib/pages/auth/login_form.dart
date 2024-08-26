@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:sjq/pages/auth/_buttons.dart';
-import 'package:sjq/themes/themes.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../home/home.screen.dart'; // Import the HomeScreen
+
+// Assuming these are defined somewhere in your themes file
+import 'package:sjq/themes/themes.dart';
+
+// Assuming this is a separate widget in your project
+import 'package:sjq/pages/auth/_buttons.dart'; 
 
 class LoginForm extends StatelessWidget {
   final GlobalKey<FormState> _formKey;
@@ -15,15 +21,43 @@ class LoginForm extends StatelessWidget {
     required this.passwordController,
   }) : _formKey = formKey;
 
-  void _login(BuildContext context) async {
+  Future<void> _login(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
-      // Directly navigate to the HomeScreen
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-      );
+      // Create a map with the login details
+      Map<String, String> loginDetails = {
+        'identifier': usernameOrEmailController.text,
+        'password': passwordController.text,
+      };
+
+      try {
+        // Send login request to the server
+        final response = await http.post(
+          Uri.parse('http://localhost:5000/api/auth/login'), // Adjust the URL as needed
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode(loginDetails),
+        );
+
+        if (response.statusCode == 200) {
+          // On success, navigate to the HomeScreen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen()),
+          );
+        } else {
+          // On failure, display an error message
+          final errorResponse = json.decode(response.body);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorResponse['msg'] ?? 'Invalid credentials')),
+          );
+        }
+      } catch (error) {
+        // Handle any errors that occur during the request
+        print('Login request error: $error');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred. Please try again.')),
+        );
+      }
     } else {
-      // Debugging: Log validation failure
       print('Form validation failed');
     }
   }
@@ -67,11 +101,6 @@ class LoginForm extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [ForgotPasswordButton()],
-          ),
-          SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () => _login(context),
-            child: Text("Login"),
           ),
         ],
       ),

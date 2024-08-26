@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:sjq/models/client.model.dart';
 import 'package:sjq/services/user/user.service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sjq/themes/themes.dart';
 
 class FormScreen extends StatefulWidget {
@@ -17,11 +18,15 @@ class _FormScreenState extends State<FormScreen> {
   TextEditingController motherNameController = TextEditingController();
   TextEditingController patientNameController = TextEditingController();
   TextEditingController patientDobController = TextEditingController();
-  TextEditingController patientHeightController = TextEditingController();
-  TextEditingController patientWeightController = TextEditingController();
-  TextEditingController actualDateController = TextEditingController();
+  TextEditingController heightController = TextEditingController();
+  TextEditingController weightController = TextEditingController();
+  TextEditingController dateOfWeighingController = TextEditingController();
+
   String selectedSex = 'Male'; // Default selection
-  String indigenousChild = 'No'; // Default selection
+  String weightForAge = 'Normal';
+  String heightForAge = 'Normal';
+  String weightForHeight = 'Normal';
+  String nutritionStatus = 'Normal';
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
@@ -30,9 +35,15 @@ class _FormScreenState extends State<FormScreen> {
     motherNameController.clear();
     patientNameController.clear();
     patientDobController.clear();
-    patientHeightController.clear();
-    patientWeightController.clear();
-    actualDateController.clear();
+    heightController.clear();
+    weightController.clear();
+    dateOfWeighingController.clear();
+    setState(() {
+      weightForAge = 'Normal';
+      heightForAge = 'Normal';
+      weightForHeight = 'Normal';
+      nutritionStatus = 'Normal';
+    });
   }
 
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
@@ -46,10 +57,10 @@ class _FormScreenState extends State<FormScreen> {
           data: ThemeData.light().copyWith(
             primaryColor: const Color(0xFF96B0D7),
             buttonTheme: const ButtonThemeData(
-              textTheme: ButtonTextTheme.primary, // Button text color
+              textTheme: ButtonTextTheme.primary,
             ),
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFF96B0D7), // Selected date background color
+              primary: Color(0xFF96B0D7),
             ).copyWith(secondary: const Color(0xFF96B0D7)),
           ),
           child: child!,
@@ -58,37 +69,97 @@ class _FormScreenState extends State<FormScreen> {
     );
     if (picked != null) {
       setState(() {
-        controller.text = "${picked.month}/${picked.day}/${picked.year}";
+        controller.text = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+        _calculateStatuses(); // Recalculate statuses after the date is picked
       });
+    }
+  }
+
+  void _calculateStatuses() {
+    double weight = double.tryParse(weightController.text) ?? 0;
+    double height = double.tryParse(heightController.text) ?? 0;
+    int ageInMonths = _calculateAgeInMonths();
+
+    if (weight < 2.5) {
+      weightForAge = 'Underweight';
+    } else {
+      weightForAge = 'Normal';
+    }
+
+    if (height < 45) {
+      heightForAge = 'Stunted';
+    } else {
+      heightForAge = 'Normal';
+    }
+
+    if (weight / (height * height) > 25) {
+      weightForHeight = 'Obese';
+    } else if (weight / (height * height) < 18.5) {
+      weightForHeight = 'Wasted';
+    } else {
+      weightForHeight = 'Normal';
+    }
+
+    nutritionStatus = (weightForAge == 'Normal' && heightForAge == 'Normal' && weightForHeight == 'Normal')
+        ? 'Normal'
+        : 'Malnourished';
+
+    setState(() {});
+  }
+
+  int _calculateAgeInMonths() {
+    if (patientDobController.text.isEmpty) return 0;
+    try {
+      DateTime dob = DateTime.parse(patientDobController.text);
+      DateTime now = DateTime.now();
+      int ageInMonths = (now.year - dob.year) * 12 + now.month - dob.month;
+      return ageInMonths;
+    } catch (e) {
+      print("Error parsing date: $e");
+      return 0;
     }
   }
 
   Future<void> saveButtonPressed(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
-      // Gather data from text controllers
       String address = addressController.text;
       String motherName = motherNameController.text;
       String patientName = patientNameController.text;
       String patientDob = patientDobController.text;
-      String patientHeight = patientHeightController.text;
+      String patientHeight = heightController.text;
       String patientSex = selectedSex;
-      String patientWeight = patientWeightController.text;
-      String actualDate = actualDateController.text;
+      String patientWeight = weightController.text;
+      String actualDate = dateOfWeighingController.text;
+      int ageInMonths = _calculateAgeInMonths();
+
+      String? userId = await getUserId(); // Get the current user's ID
+
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: User ID not found'),
+          ),
+        );
+        return;
+      }
 
       Client newClient = Client(
-        id: DateTime.now().millisecondsSinceEpoch,
         guardian: motherName,
         address: address,
         name: patientName,
-        age: patientDob,
+        dob: patientDob,
         gender: patientSex,
         height: patientHeight,
         weight: patientWeight,
-        actualDate: actualDate,
-        indigenousChild: indigenousChild == 'Yes',
+        dateOfWeighing: actualDate,
+        weightForAge: weightForAge,
+        heightForAge: heightForAge,
+        weightForHeight: weightForHeight,
+        nutritionStatus: nutritionStatus,
+        ageInMonths: ageInMonths,
+        userId: userId, // Pass the userId to the client object
       );
 
-      // Save user here
       await userService.createEntry(newClient);
 
       _clearFormFields();
@@ -107,12 +178,17 @@ class _FormScreenState extends State<FormScreen> {
             title: const Text('New Client Information'),
             content: Text('Name: ${newClient.name}\n'
                 'Guardian: ${newClient.guardian}\n'
-                'Date of Birth: ${newClient.age}\n'
+                'Date of Birth: ${newClient.dob}\n'
                 'Height: ${newClient.height}\n'
                 'Sex: ${newClient.gender}\n'
                 'Weight: ${newClient.weight}\n'
-                'Actual Date of Weighing: ${newClient.actualDate}\n'
-                'Indigenous Preschool Child: ${newClient.indigenousChild ? 'Yes' : 'No'}'),
+                'Actual Date of Weighing: ${newClient.dateOfWeighing}\n'
+                'Age in Months: ${newClient.ageInMonths}\n' // Display ageInMonths
+                'Weight-for-Age: ${newClient.weightForAge}\n'
+                'Height-for-Age: ${newClient.heightForAge}\n'
+                'Weight-for-Height: ${newClient.weightForHeight}\n'
+                'Nutrition Status: ${newClient.nutritionStatus}\n'
+                'User ID: ${newClient.userId}'), // Display the userId
             actions: [
               TextButton(
                 onPressed: () {
@@ -125,6 +201,11 @@ class _FormScreenState extends State<FormScreen> {
         },
       );
     }
+  }
+
+  Future<String?> getUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('userId'); // Retrieve the stored userId
   }
 
   @override
@@ -163,15 +244,15 @@ class _FormScreenState extends State<FormScreen> {
                       decoration: const InputDecoration(
                         hintStyle: paragraphS,
                         hintText: 'STREET OR BLOCK#/PUROK OR LANDMARK',
-                        fillColor: Colors.white, // Set background color to white
+                        fillColor: Colors.white,
                         filled: true,
                         contentPadding: EdgeInsets.symmetric(
                           vertical: 5,
                           horizontal: 15,
-                        ), // Adjust the vertical padding
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.all(
-                            Radius.circular(20), // Set circular border radius
+                            Radius.circular(20),
                           ),
                         ),
                       ),
@@ -192,15 +273,15 @@ class _FormScreenState extends State<FormScreen> {
                       decoration: const InputDecoration(
                         hintStyle: paragraphS,
                         hintText: 'SURNAME, FIRST NAME',
-                        fillColor: Colors.white, // Set background color to white
+                        fillColor: Colors.white,
                         filled: true,
                         contentPadding: EdgeInsets.symmetric(
                           vertical: 5,
                           horizontal: 15,
-                        ), // Adjust the vertical padding
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.all(
-                            Radius.circular(20), // Set circular border radius
+                            Radius.circular(20),
                           ),
                         ),
                       ),
@@ -218,37 +299,6 @@ class _FormScreenState extends State<FormScreen> {
                       decoration: const InputDecoration(
                         hintStyle: paragraphS,
                         hintText: 'SURNAME, FIRST NAME',
-                        fillColor: Colors.white,
-                        filled: true,
-                        contentPadding: EdgeInsets.symmetric(
-                          vertical: 5,
-                          horizontal: 15,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(20),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height:10),
-                     const Text("INDIGENOUS PRESCHOOL CHILD?", style: paragraphS),
-                    DropdownButtonFormField<String>(
-                      value: indigenousChild,
-                      onChanged: (value) {
-                        setState(() {
-                          indigenousChild = value!;
-                        });
-                      },
-                      items: <String>['Yes', 'No'].map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      decoration: const InputDecoration(
-                        hintStyle: paragraphS,
-                        hintText: 'Select Yes or No',
                         fillColor: Colors.white,
                         filled: true,
                         contentPadding: EdgeInsets.symmetric(
@@ -283,7 +333,7 @@ class _FormScreenState extends State<FormScreen> {
                                     },
                                     decoration: const InputDecoration(
                                       hintStyle: paragraphS,
-                                      hintText: 'MM/DD/YYYY',
+                                      hintText: 'YYYY-MM-DD',
                                       fillColor: Colors.white,
                                       filled: true,
                                       contentPadding: EdgeInsets.symmetric(
@@ -313,6 +363,7 @@ class _FormScreenState extends State<FormScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     selectedSex = value!;
+                                    _calculateStatuses(); // Recalculate statuses after sex is selected
                                   });
                                 },
                                 items: <String>['Male', 'Female'].map((String value) {
@@ -351,11 +402,14 @@ class _FormScreenState extends State<FormScreen> {
                             children: [
                               const Text("PATIENT HEIGHT", style: paragraphS),
                               TextFormField(
-                                controller: patientHeightController,
+                                controller: heightController,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'^\d*.?\d{0,2}')),
                                 ],
+                                onChanged: (value) {
+                                  _calculateStatuses(); // Recalculate statuses after height is input
+                                },
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter the patient height';
@@ -377,7 +431,7 @@ class _FormScreenState extends State<FormScreen> {
                                     ),
                                   ),
                                   suffixText: 'CM',
-                                  suffixStyle: paragraphS, // Style for the 'CM' text
+                                  suffixStyle: paragraphS,
                                 ),
                               ),
                             ],
@@ -390,11 +444,14 @@ class _FormScreenState extends State<FormScreen> {
                             children: [
                               const Text("PATIENT WEIGHT", style: paragraphS),
                               TextFormField(
-                                controller: patientWeightController,
+                                controller: weightController,
                                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                 inputFormatters: [
                                   FilteringTextInputFormatter.allow(RegExp(r'^\d*.?\d{0,2}')),
                                 ],
+                                onChanged: (value) {
+                                  _calculateStatuses(); // Recalculate statuses after weight is input
+                                },
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Please enter the patient weight';
@@ -416,7 +473,7 @@ class _FormScreenState extends State<FormScreen> {
                                     ),
                                   ),
                                   suffixText: 'KG',
-                                  suffixStyle: paragraphS, // Style for the 'KG' text
+                                  suffixStyle: paragraphS,
                                 ),
                               ),
                             ],
@@ -427,10 +484,10 @@ class _FormScreenState extends State<FormScreen> {
                     const SizedBox(height: 10),
                     const Text("ACTUAL DATE OF WEIGHING", style: paragraphS),
                     GestureDetector(
-                      onTap: () => _selectDate(context, actualDateController),
+                      onTap: () => _selectDate(context, dateOfWeighingController),
                       child: AbsorbPointer(
                         child: TextFormField(
-                          controller: actualDateController,
+                          controller: dateOfWeighingController,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please select the actual date of weighing';
@@ -439,7 +496,7 @@ class _FormScreenState extends State<FormScreen> {
                           },
                           decoration: const InputDecoration(
                             hintStyle: paragraphS,
-                            hintText: 'MM/DD/YYYY',
+                            hintText: 'YYYY-MM-DD',
                             fillColor: Colors.white,
                             filled: true,
                             contentPadding: EdgeInsets.symmetric(
@@ -455,9 +512,17 @@ class _FormScreenState extends State<FormScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 10),
+                    _buildReadOnlyField('Weight-for-Age', weightForAge),
+                    const SizedBox(height: 10),
+                    _buildReadOnlyField('Height-for-Age', heightForAge),
+                    const SizedBox(height: 10),
+                    _buildReadOnlyField('Weight-for-Height', weightForHeight),
+                    const SizedBox(height: 10),
+                    _buildReadOnlyField('Nutrition Status', nutritionStatus),
                     const SizedBox(height: 15),
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center, // Center the children horizontally
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         ElevatedButton(
                           onPressed: () {
@@ -488,6 +553,32 @@ class _FormScreenState extends State<FormScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildReadOnlyField(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: paragraphS),
+        TextFormField(
+          readOnly: true,
+          initialValue: value,
+          decoration: const InputDecoration(
+            fillColor: Colors.white,
+            filled: true,
+            contentPadding: EdgeInsets.symmetric(
+              vertical: 5,
+              horizontal: 15,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.all(
+                Radius.circular(20),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

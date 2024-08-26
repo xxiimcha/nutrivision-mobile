@@ -1,13 +1,30 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:sjq/models/client.model.dart';
 
 class UserService {
-  // Save user form here. for now, just print them. but you can use firebase here instead
+  final String baseUrl = 'http://localhost:5000/api';
+
   Future<void> createEntry(Client client) async {
-    Timer(const Duration(seconds: 2), () {
-      debugPrint(client.toString());
-    });
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/patients/create'),
+        headers: <String, String>{
+          'Content-Type': 'application/json; charset=UTF-8',
+        },
+        body: jsonEncode(client.toJson()),
+      );
+
+      if (response.statusCode == 201) {
+        print('Patient record created successfully');
+      } else {
+        print('Failed to create patient record with status code: ${response.statusCode}');
+        print('Response body: ${response.body}');
+        throw Exception('Failed to create patient record: ${response.body}');
+      }
+    } catch (e) {
+      print('Error creating patient record: $e');
+      rethrow;
+    }
   }
 }

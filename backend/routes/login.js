@@ -23,7 +23,8 @@ router.post('/', async (req, res) => {
     console.log('Stored password:', user.password);
 
     if (user.password === password) {
-      res.status(200).json({ status: 'success' });
+      console.log('User ID:', user._id);  // Log the user ID
+      res.status(200).json({ status: 'success', userId: user._id }); // Return user ID in the response
     } else {
       res.status(401).json({ status: 'fail', message: 'Invalid credentials' });
     }

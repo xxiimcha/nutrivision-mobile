@@ -12,6 +12,7 @@ router.post('/signup', async (req, res) => {
     // Check if the user already exists
     let user = await User.findOne({ email });
     if (user) {
+      console.log(`Signup attempt failed: User with email ${email} already exists.`);
       return res.status(400).json({ status: 'fail', message: 'User already exists' });
     }
 
@@ -25,6 +26,8 @@ router.post('/signup', async (req, res) => {
     // Create a new user with the OTP and its expiration time
     user = new User({ username, email, password: hashedPassword, otp, otpExpires });
     await user.save();
+
+    console.log(`User ${username} registered successfully. OTP generated.`);
 
     // Send OTP to the user's email
     const transporter = nodemailer.createTransport({
@@ -43,6 +46,7 @@ router.post('/signup', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+    console.log(`OTP email sent successfully to ${email}.`);
 
     res.status(201).json({ status: 'success', message: 'User registered successfully. OTP sent to your email.' });
   } catch (error) {

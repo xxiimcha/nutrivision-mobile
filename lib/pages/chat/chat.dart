@@ -1,110 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(
     MaterialApp(
-      home: ChatPage(
-        items: [
-          MessageItem(
-            'Aliah Ann Bribon',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Karylle Corpuz',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Ervin Fajardo',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Patrick Marcelino',
-            'Start conversation',
-          ),
-           MessageItem(
-            'Choi Seungcheol',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Yoon Jeonghan',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Hong Jisoo',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Moon Junhui',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Kwon Soonyoung',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Jeon Wonwoo',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Lee Jihoon',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Xu Myungho',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Kim Mingyu',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Lee Seokmin',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Boo Seungkwan',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Chwe Hansol',
-            'Start conversation',
-          ),
-          MessageItem(
-            'Lee Chan',
-            'Start conversation',
-          ),
-        ],
-      ),
+      home: ChatPage(),
     ),
   );
 }
 
 class ChatPage extends StatefulWidget {
-  final List<ListItem> items;
-
-  const ChatPage({super.key, required this.items});
+  const ChatPage({super.key});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ChatPageState createState() => _ChatPageState();
 }
 
 class _ChatPageState extends State<ChatPage> {
-  late List<ListItem> filteredItems;
+  List<MessageItem> items = [];
+  List<MessageItem> filteredItems = [];
 
   @override
   void initState() {
-    filteredItems = widget.items;
     super.initState();
+    fetchUsers();
+  }
+
+  Future<void> fetchUsers() async {
+    final response = await http.get(Uri.parse('http://localhost:5000/api/users'));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> usersJson = json.decode(response.body);
+      setState(() {
+        items = usersJson.map((userJson) => MessageItem(userJson['name'], 'Start conversation')).toList();
+        filteredItems = items;
+      });
+    } else {
+      print('Failed to load users');
+    }
   }
 
   void filterList(String query) {
     setState(() {
-      filteredItems = widget.items
-          .where((item) => (item as MessageItem)
-              .sender
-              .toLowerCase()
-              .contains(query.toLowerCase()))
+      filteredItems = items
+          .where((item) => item.sender.toLowerCase().contains(query.toLowerCase()))
           .toList();
     });
   }
@@ -124,25 +64,22 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 8), // Adjust horizontal padding here
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8), // Add space above the search container
+              const SizedBox(height: 8),
               Container(
                 height: 40,
                 width: 700,
                 decoration: BoxDecoration(
                   color: const Color(0xFF96B0D7),
-                  borderRadius: BorderRadius.circular(20), // Circular edges
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10), // Adjust horizontal padding here
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment:
-                      CrossAxisAlignment.center, // Align vertically
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(
                       width: 200,
@@ -151,8 +88,7 @@ class _ChatPageState extends State<ChatPage> {
                         decoration: const InputDecoration(
                           prefixIcon: Icon(Icons.search, color: Colors.white),
                           hintText: 'Search',
-                          hintStyle:
-                              TextStyle(color: Colors.white, fontSize: 19),
+                          hintStyle: TextStyle(color: Colors.white, fontSize: 19),
                           border: InputBorder.none,
                         ),
                         onChanged: filterList,
@@ -161,7 +97,7 @@ class _ChatPageState extends State<ChatPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8), // Add space below the search container
+              const SizedBox(height: 8),
               Expanded(
                 child: filteredItems.isEmpty
                     ? const Center(
@@ -178,13 +114,11 @@ class _ChatPageState extends State<ChatPage> {
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: () {
-                                // Handle tap to navigate to chat screen for selected user
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ChatScreen(
-                                      userName:
-                                          (item as MessageItem).getSender(),
+                                      userName: item.getSender(),
                                     ),
                                   ),
                                 );
@@ -263,25 +197,22 @@ class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.userName});
 
   @override
-  // ignore: library_private_types_in_public_api
   _ChatScreenState createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  List<ChatMessage> chatMessages = []; // List to hold chat messages
+  List<ChatMessage> chatMessages = [];
 
   void _sendMessage() {
     String message = _messageController.text;
     setState(() {
       chatMessages.add(ChatMessage(
-        // Append the new message at the end of the list
         sender: widget.userName,
         message: message,
-        isMe: true, // Set the message sender as the current user
+        isMe: true,
       ));
     });
-    // Clear the text field after sending the message
     _messageController.clear();
   }
 
@@ -306,7 +237,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Expanded(
               child: ListView.builder(
-                reverse: true, // Reverse the ListView to start from the bottom
+                reverse: true,
                 itemCount: chatMessages.length,
                 itemBuilder: (context, index) {
                   final reversedIndex = chatMessages.length - 1 - index;
@@ -325,9 +256,11 @@ class _ChatScreenState extends State<ChatScreen> {
                               : const Color.fromARGB(255, 158, 158, 158),
                           borderRadius: BorderRadius.circular(12.0),
                         ),
-                        child: Text(message.message,
-                            style: const TextStyle(
-                                color: Color.fromARGB(255, 0, 0, 0))),
+                        child: Text(
+                          message.message,
+                          style: const TextStyle(
+                              color: Color.fromARGB(255, 0, 0, 0)),
+                        ),
                       ),
                     ),
                   );
@@ -362,6 +295,9 @@ class ChatMessage {
   final String message;
   final bool isMe;
 
-  ChatMessage(
-      {required this.sender, required this.message, required this.isMe});
+  ChatMessage({
+    required this.sender,
+    required this.message,
+    required this.isMe,
+  });
 }

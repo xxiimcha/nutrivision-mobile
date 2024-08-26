@@ -4,7 +4,7 @@ const Event = require('../models/Event'); // Import the Event model
 const router = express.Router();
 
 // Get events by date (or all events if no date is provided)
-router.get('/events', async (req, res) => {
+router.get('/', async (req, res) => {  // Notice the change here
   const { date } = req.query;
 
   try {

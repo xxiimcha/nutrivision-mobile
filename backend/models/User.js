@@ -15,6 +15,14 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  firstName: {
+    type: String,
+    required: false, // Initially not required, can be updated later
+  },
+  lastName: {
+    type: String,
+    required: false, // Initially not required, can be updated later
+  },
   otp: {
     type: String,
     required: false,

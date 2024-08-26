@@ -20,53 +20,6 @@ class SignupForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final HttpService httpService = HttpService();
-
-    Future<void> _onSignUp() async {
-      if (_formKey.currentState?.validate() ?? false) {
-        try {
-          // Call sign-up method
-          final response = await httpService.signUp(
-            usernameController.text,
-            emailController.text,
-            passwordController.text,
-          );
-
-          print('Sign-up response: $response');
-
-          // Check if the sign-up was successful
-          if (response.containsKey('status') && response['status'] == 'success') {
-            // If sign-up is successful, send OTP
-            await httpService.sendOtp(emailController.text);
-            print('OTP sent to ${emailController.text}');
-
-            // Navigate to the Verify Email Page
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => VerifyEmailPage(
-                  email: emailController.text,
-                  httpService: httpService,
-                ),
-              ),
-            );
-          } else if (response.containsKey('message') && response['message'] == 'User already exists') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('User already exists. Please log in.')),
-            );
-          } else {
-            throw Exception('Unexpected response: ${response['message'] ?? 'Unknown error'}');
-          }
-        } catch (e) {
-          print('Sign-up error: $e');
-          // Show error message if sign-up fails
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to sign up: $e')),
-          );
-        }
-      }
-    }
-
     return Form(
       key: _formKey,
       child: Column(
@@ -132,6 +85,8 @@ class SignupForm extends StatelessWidget {
               return null;
             },
           ),
+          const SizedBox(height: 20),
+          // The SignupButton will be included outside this form widget
         ],
       ),
     );

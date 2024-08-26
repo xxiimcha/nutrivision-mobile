@@ -18,9 +18,13 @@ mongoose.connect('mongodb://localhost:27017/nutrivision', {
 // Routes
 const authRoutes = require('./routes/auth'); // Import the auth routes
 const eventRoutes = require('./routes/events'); // Import the event routes
+const patientRoutes = require('./routes/patients'); // Import the patient routes
+const userRoutes = require('./routes/users'); // Import the patient routes
 
 app.use('/api/auth', authRoutes); // Use the auth routes
-app.use('/api', eventRoutes); // Use the event routes
+app.use('/api/events', eventRoutes); // Use the event routes
+app.use('/api/patients', patientRoutes); // Use the patient routes
+app.use('/api/users', userRoutes); // Use the patient routes
 
 // Set the port to 5000
 const PORT = 5000;

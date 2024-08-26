@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sjq/navigator.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -14,49 +16,154 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _image;
   final TextEditingController fullNameController = TextEditingController();
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
   final TextEditingController ageController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController contactController = TextEditingController();
 
+  String _fullName = ''; // Variable to hold the combined firstName and lastName
+
   @override
   void initState() {
     super.initState();
-    fullNameController.text = 'Yoon Hannie';
-    ageController.text = '5';
-    emailController.text = "example@gmail.com";
-    contactController.text = "09876543210";
+    _loadUserData(); // Load user data when screen is initialized
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
+
+      if (userId != null) {
+        print('User ID found in SharedPreferences: $userId');
+        
+        // Replace with your backend endpoint to fetch user data
+        final response = await http.get(Uri.parse('http://localhost:5000/api/users/$userId'));
+
+        print('HTTP GET request sent to: http://localhost:5000/api/users/$userId');
+        print('Response status code: ${response.statusCode}');
+        
+        if (response.statusCode == 200) {
+          final userData = jsonDecode(response.body);
+          print('User data fetched successfully: $userData');
+
+          setState(() {
+            fullNameController.text = userData['username'] ?? '';
+            firstNameController.text = userData['firstName'] ?? '';
+            lastNameController.text = userData['lastName'] ?? '';
+            ageController.text = userData['age'] ?? '';
+            emailController.text = userData['email'] ?? '';
+            contactController.text = userData['contact'] ?? '';
+
+            // Combine firstName and lastName
+            _fullName = '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
+          });
+        } else {
+          print('Failed to load user data: ${response.reasonPhrase}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to load user data: ${response.reasonPhrase}')),
+          );
+        }
+      } else {
+        print('User ID not found in SharedPreferences');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User ID not found')),
+        );
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error loading user data: $e')),
+      );
+    }
   }
 
   Future<void> _openCamera() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.camera);
-    setState(() {
-      _image = File(pickedFile!.path);
-    });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.camera);
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+        print('Image picked from camera: ${pickedFile.path}');
+      } else {
+        print('No image selected from camera.');
+      }
+    } catch (e) {
+      print('Error opening camera: $e');
+    }
   }
 
   Future<void> _openFilePicker() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    setState(() {
-      _image = File(pickedFile!.path);
-    });
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      if (pickedFile != null) {
+        setState(() {
+          _image = File(pickedFile.path);
+        });
+        print('Image picked from gallery: ${pickedFile.path}');
+      } else {
+        print('No image selected from gallery.');
+      }
+    } catch (e) {
+      print('Error opening file picker: $e');
+    }
   }
 
-  void saveChanges(BuildContext context) {
-    // Add logic to save changes here
+  void saveChanges(BuildContext context) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
 
-    // Show snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Changes saved successfully!'),
-      ),
-    );
+      if (userId != null) {
+        final updatedUserData = {
+          "username": fullNameController.text,
+          "firstName": firstNameController.text,
+          "lastName": lastNameController.text,
+          "email": emailController.text,
+          "contact": contactController.text,
+        };
 
-    Timer(const Duration(seconds: 1), () {
-      // Navigate to Welcome page
-      AppNavigator().pop(context);
-    });
+        final response = await http.put(
+          Uri.parse('http://localhost:5000/api/users/$userId'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(updatedUserData),
+        );
+
+        if (response.statusCode == 200) {
+          print('User data updated successfully');
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Changes saved successfully!'),
+            ),
+          );
+
+          Timer(const Duration(seconds: 1), () {
+            AppNavigator().pop(context);
+          });
+        } else {
+          print('Failed to update user data: ${response.reasonPhrase}');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update user data: ${response.reasonPhrase}')),
+          );
+        }
+      } else {
+        print('User ID not found in SharedPreferences');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User ID not found')),
+        );
+      }
+    } catch (e) {
+      print('Error saving changes: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error saving changes: $e')),
+      );
+    }
   }
 
   @override
@@ -142,9 +249,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ],
               ),
               const SizedBox(height: 15),
-              const Text(
-                'Yoon Hannie', // Replace 'Username' with the actual username
-                style: TextStyle(
+              Text(
+                _fullName, // Display the combined firstName and lastName
+                style: const TextStyle(
                   fontSize: 28,
                   color: Colors.black87,
                   fontWeight: FontWeight.w600,
@@ -155,7 +262,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   Text(
-                    'Edit your personal information', // Replace 'Username' with the actual username
+                    'Edit your personal information',
                     style: TextStyle(
                       fontSize: 20,
                       color: Colors.black87,
@@ -180,15 +287,47 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: emailController,
                         decoration: const InputDecoration(
                           hintText: 'Input new email',
-                          fillColor:
-                              Colors.white, // Set background color to white
+                          fillColor: Colors.white,
                           filled: true,
                           contentPadding: EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 15), // Adjust the vertical padding
-                          border: OutlineInputBorder(
+                              vertical: 5, horizontal: 15),
+                          border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(
-                              Radius.circular(20), // Set circular border radius
+                              Radius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text("First Name"),
+                      TextField(
+                        controller: firstNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'Input new first name',
+                          fillColor: Colors.white,
+                          filled: true,
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 5, horizontal: 15),
+                          border: const OutlineInputBorder(
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      const Text("Last Name"),
+                      TextField(
+                        controller: lastNameController,
+                        decoration: const InputDecoration(
+                          hintText: 'Input new last name',
+                          fillColor: Colors.white,
+                          filled: true,
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 5, horizontal: 15),
+                          border: const OutlineInputBorder(
+                            borderRadius: BorderRadius.all(
+                              Radius.circular(20),
                             ),
                           ),
                         ),
@@ -199,15 +338,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: fullNameController,
                         decoration: const InputDecoration(
                           hintText: 'Input new username',
-                          fillColor:
-                              Colors.white, // Set background color to white
+                          fillColor: Colors.white,
                           filled: true,
                           contentPadding: EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 15), // Adjust the vertical padding
-                          border: OutlineInputBorder(
+                              vertical: 5, horizontal: 15),
+                          border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(
-                              Radius.circular(20), // Set circular border radius
+                              Radius.circular(20),
                             ),
                           ),
                         ),
@@ -218,15 +355,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         controller: contactController,
                         decoration: const InputDecoration(
                           hintText: 'Input new contact',
-                          fillColor:
-                              Colors.white, // Set background color to white
+                          fillColor: Colors.white,
                           filled: true,
                           contentPadding: EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 15), // Adjust the vertical padding
-                          border: OutlineInputBorder(
+                              vertical: 5, horizontal: 15),
+                          border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(
-                              Radius.circular(20), // Set circular border radius
+                              Radius.circular(20),
                             ),
                           ),
                         ),

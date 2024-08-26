@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:sjq/navigator.dart';
 import 'package:sjq/themes/themes.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'http_service.dart';
+import 'account_verify.dart';
 
 class SignupButton extends StatelessWidget {
   SignupButton({
@@ -26,20 +28,32 @@ class SignupButton extends StatelessWidget {
       onPressed: () async {
         if (_formKey.currentState!.validate()) {
           try {
+            // Sign up the user (OTP is sent within this process)
             final response = await httpService.signUp(
               usernameController.text,
               emailController.text,
               passwordController.text,
             );
             print('Response: $response'); // Log the response
-            if (response['status'] == 'success') {
+
+            if (response.containsKey('msg') && response['msg'] == 'User registered successfully. OTP sent to your email.') {
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Sign up successful!'),
+                content: Text('Sign up successful! OTP sent to your email.'),
               ));
-              Navigator.pop(context); // Navigate back to login page
+
+              // Navigate to VerifyEmailPage upon successful signup and OTP sending
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => VerifyEmailPage(
+                    email: emailController.text,
+                    httpService: httpService,
+                  ),
+                ),
+              );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                content: Text(response['message'] ?? 'Failed to sign up'),
+                content: Text(response['msg'] ?? 'Failed to sign up'),
               ));
             }
           } catch (e) {
@@ -50,8 +64,8 @@ class SignupButton extends StatelessWidget {
           }
         }
       },
-      style: const ButtonStyle(
-        backgroundColor: WidgetStatePropertyAll(colorBlue),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: colorBlue,
       ),
       child: Text(
         'SIGN UP',
@@ -74,6 +88,11 @@ class LoginButton extends StatelessWidget {
   final TextEditingController passwordController;
   final HttpService httpService = HttpService(); // Initialize the HTTP service
 
+  Future<void> _storeUserId(String userId) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('userId', userId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ElevatedButton(
@@ -84,25 +103,31 @@ class LoginButton extends StatelessWidget {
               usernameOrEmailController.text,
               passwordController.text,
             );
-            if (response['status'] == 'success') {
+            print('Response: $response'); // Log the response
+
+            if (response.containsKey('msg') && response['msg'] == 'Login successful') {
+              String userId = response['userId']; // Get the userId from the response
+              await _storeUserId(userId); // Store the userId locally
+
               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                 content: Text('Login successful!'),
               ));
               AppNavigator().toHome(context); // Navigate to home page
             } else {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Invalid credentials'),
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                content: Text(response['msg'] ?? 'Invalid credentials'),
               ));
             }
           } catch (e) {
+            print('Error: $e'); // Log the error
             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
               content: Text('Failed to log in'),
             ));
           }
         }
       },
-      style: const ButtonStyle(
-        backgroundColor: WidgetStatePropertyAll(Color(0xFF0000FF)), // Replace with your theme color
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Color(0xFF0000FF), // Replace with your theme color
       ),
       child: Text(
         'LOGIN',

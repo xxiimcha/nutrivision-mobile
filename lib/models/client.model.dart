@@ -1,62 +1,50 @@
 class Client {
-  int id;
-  final String name;
-  final String guardian;
   final String address;
-  final String age;
-  final String height;
+  final String guardian;
+  final String name;
+  final String dob;
   final String gender;
+  final String height;
   final String weight;
-  final String actualDate;
-  final bool indigenousChild;
+  final String dateOfWeighing;
+  final String weightForAge;
+  final String heightForAge;
+  final String weightForHeight;
+  final String nutritionStatus;
+  final int ageInMonths;
+  final String userId; // Add the new field for userId
 
   Client({
-    this.id = 0,
-    this.name = '',
-    this.guardian = '',
-    this.address = '',
-    this.age = '',
-    this.height = '',
-    this.gender = '',
-    this.weight = '',
-    this.actualDate = '',
-    this.indigenousChild = false,
+    required this.address,
+    required this.guardian,
+    required this.name,
+    required this.dob,
+    required this.gender,
+    required this.height,
+    required this.weight,
+    required this.dateOfWeighing,
+    required this.weightForAge,
+    required this.heightForAge,
+    required this.weightForHeight,
+    required this.nutritionStatus,
+    required this.ageInMonths,
+    required this.userId, // Include in the constructor
   });
 
-  // Convert Client model to Json
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'guardian': guardian,
-      'address': address,
-      'age': age,
-      'height': height,
-      'gender': gender,
-      'weight': weight,
-      'actualDate': actualDate,
-      'indigenousChild': indigenousChild,
-    };
-  }
-
-  // Convert Json to Client model
-  factory Client.fromJson(Map<String, dynamic> json) {
-    return Client(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      address: json['address'] ?? '',
-      guardian: json['guardian'] ?? '',
-      age: json['age'] ?? '',
-      height: json['height'] ?? '',
-      gender: json['gender'] ?? '',
-      weight: json['weight'] ?? '',
-      actualDate: json['actualDate'] ?? '',
-      indigenousChild: json['indigenousChild'] ?? false,
-    );
-  }
-
-  @override
-  String toString() {
-    return 'Client{id: $id, name: $name, guardian: $guardian, address: $address, age: $age, height: $height, gender: $gender, weight: $weight, actualDate: $actualDate, indigenousChild: $indigenousChild}';
-  }
+  Map<String, dynamic> toJson() => {
+    'address': address,
+    'guardian': guardian,
+    'name': name,
+    'dob': dob,
+    'gender': gender,
+    'height': height,
+    'weight': weight,
+    'dateOfWeighing': dateOfWeighing,
+    'weightForAge': weightForAge,
+    'heightForAge': heightForAge,
+    'weightForHeight': weightForHeight,
+    'nutritionStatus': nutritionStatus,
+    'ageInMonths': ageInMonths,
+    'userId': userId, // Include in the JSON serialization
+  };
 }
