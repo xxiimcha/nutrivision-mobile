@@ -160,6 +160,11 @@ class _FormScreenState extends State<FormScreen> {
         userId: userId, // Pass the userId to the client object
       );
 
+      // Debugging output
+      print('Client guardian (motherName): ${newClient.guardian}');
+      print('Client name (patientName): ${newClient.name}');
+      print('Client data: ${newClient.toJson()}');
+
       await userService.createEntry(newClient);
 
       _clearFormFields();
@@ -512,14 +517,6 @@ class _FormScreenState extends State<FormScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    _buildReadOnlyField('Weight-for-Age', weightForAge),
-                    const SizedBox(height: 10),
-                    _buildReadOnlyField('Height-for-Age', heightForAge),
-                    const SizedBox(height: 10),
-                    _buildReadOnlyField('Weight-for-Height', weightForHeight),
-                    const SizedBox(height: 10),
-                    _buildReadOnlyField('Nutrition Status', nutritionStatus),
                     const SizedBox(height: 15),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -553,32 +550,6 @@ class _FormScreenState extends State<FormScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildReadOnlyField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: paragraphS),
-        TextFormField(
-          readOnly: true,
-          initialValue: value,
-          decoration: const InputDecoration(
-            fillColor: Colors.white,
-            filled: true,
-            contentPadding: EdgeInsets.symmetric(
-              vertical: 5,
-              horizontal: 15,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(
-                Radius.circular(20),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }
