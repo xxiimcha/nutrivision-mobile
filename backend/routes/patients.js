@@ -40,4 +40,21 @@ router.post('/create', async (req, res) => {
   }
 });
 
+// Get patient record by userId
+router.get('/:userId', async (req, res) => {
+  try {
+      const userId = req.params.userId;
+      const patientRecord = await PatientRecord.findOne({ userId: userId });
+      
+      if (!patientRecord) {
+          return res.status(404).json({ message: 'Patient record not found' });
+      }
+      
+      res.status(200).json(patientRecord);
+  } catch (error) {
+      console.error('Error fetching patient record:', error);
+      res.status(500).json({ message: 'Error fetching patient record', error });
+  }
+});
+
 module.exports = router;

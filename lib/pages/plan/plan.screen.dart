@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sjq/themes/themes.dart';
-
 class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key});
 
@@ -12,11 +13,13 @@ class PlanScreen extends StatefulWidget {
 }
 
 class _PlanScreenState extends State<PlanScreen> {
+  // Meal completion states
   bool isBreakfastDone = false;
   bool isLunchDone = false;
   bool isSnackDone = false;
   bool isDinnerDone = false;
 
+  // Image files for each meal
   File? _breakfastImage;
   File? _lunchImage;
   File? _snackImage;
@@ -24,6 +27,63 @@ class _PlanScreenState extends State<PlanScreen> {
 
   final ImagePicker _picker = ImagePicker();
 
+  Map<String, dynamic> mealPlan = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMealPlan();
+  }
+
+  // Method to load the meal plan
+  Future<void> _loadMealPlan() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
+
+      if (userId != null) {
+        // Fetch the patient record
+        final patientResponse = await http.get(
+          Uri.parse('http://localhost:5000/api/patients/$userId'),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (patientResponse.statusCode == 200) {
+          final patientData = jsonDecode(patientResponse.body);
+          final patientId = patientData['_id'];
+
+          // Now fetch the meal plan for this patient
+          final mealPlanResponse = await http.get(
+            Uri.parse('http://localhost:5000/api/mealplans/$patientId'),
+            headers: {'Content-Type': 'application/json'},
+          );
+
+          if (mealPlanResponse.statusCode == 200) {
+            final List<dynamic> data = jsonDecode(mealPlanResponse.body);
+
+            if (data.isNotEmpty) {
+              // Assuming you want to use the first meal plan in the list
+              setState(() {
+                mealPlan = data.first as Map<String, dynamic>;
+              });
+            } else {
+              print('No meal plans found for this patient.');
+            }
+          } else {
+            print('Failed to load meal plan: ${mealPlanResponse.reasonPhrase}');
+          }
+        } else {
+          print('Failed to load patient record: ${patientResponse.reasonPhrase}');
+        }
+      } else {
+        print('User ID not found in SharedPreferences');
+      }
+    } catch (e) {
+      print('Error loading meal plan: $e');
+    }
+  }
+
+  // Method to pick an image from the gallery
   Future<void> _pickImage(String mealType) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
@@ -32,21 +92,26 @@ class _PlanScreenState extends State<PlanScreen> {
         switch (mealType) {
           case 'BREAKFAST':
             _breakfastImage = File(pickedFile.path);
+            _uploadImage(_breakfastImage!);
             break;
           case 'LUNCH':
             _lunchImage = File(pickedFile.path);
+            _uploadImage(_lunchImage!);
             break;
           case 'SNACK':
             _snackImage = File(pickedFile.path);
+            _uploadImage(_snackImage!);
             break;
           case 'DINNER':
             _dinnerImage = File(pickedFile.path);
+            _uploadImage(_dinnerImage!);
             break;
         }
       }
     });
   }
 
+  // Method to take a photo using the camera
   Future<void> _takePhoto(String mealType) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
 
@@ -55,19 +120,52 @@ class _PlanScreenState extends State<PlanScreen> {
         switch (mealType) {
           case 'BREAKFAST':
             _breakfastImage = File(pickedFile.path);
+            _uploadImage(_breakfastImage!);
             break;
           case 'LUNCH':
             _lunchImage = File(pickedFile.path);
+            _uploadImage(_lunchImage!);
             break;
           case 'SNACK':
             _snackImage = File(pickedFile.path);
+            _uploadImage(_snackImage!);
             break;
           case 'DINNER':
             _dinnerImage = File(pickedFile.path);
+            _uploadImage(_dinnerImage!);
             break;
         }
       }
     });
+  }
+
+  // Method to upload an image file to the server
+  Future<void> _uploadImage(File image) async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('userId');
+
+      if (userId != null) {
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('http://localhost:5000/api/upload'),
+        );
+        request.files.add(await http.MultipartFile.fromPath('image', image.path));
+        request.fields['userId'] = userId;
+
+        final response = await request.send();
+
+        if (response.statusCode == 200) {
+          print('Image uploaded successfully');
+        } else {
+          print('Failed to upload image: ${response.statusCode}');
+        }
+      } else {
+        print('User ID not found in SharedPreferences');
+      }
+    } catch (e) {
+      print('Error uploading image: $e');
+    }
   }
 
   @override
@@ -88,9 +186,9 @@ class _PlanScreenState extends State<PlanScreen> {
               context: context,
               meal: 'BREAKFAST',
               isDone: isBreakfastDone,
-              mainDish: 'Omelette',
-              extraMeals: ['Toast'],
-              drinks: ['Orange Juice'],
+              mainDish: mealPlan['Monday']?['breakfast']?['mainDish'] ?? 'N/A',
+              extraMeals: [mealPlan['Monday']?['breakfast']?['extras'] ?? ''],
+              drinks: [mealPlan['Monday']?['breakfast']?['drinks'] ?? ''],
               imageFile: _breakfastImage,
               onUploadPhoto: () => _pickImage('BREAKFAST'),
               onTakePhoto: () => _takePhoto('BREAKFAST'),
@@ -105,9 +203,9 @@ class _PlanScreenState extends State<PlanScreen> {
               context: context,
               meal: 'LUNCH',
               isDone: isLunchDone,
-              mainDish: 'Grilled Chicken',
-              extraMeals: ['Steamed Vegetables', 'Rice'],
-              drinks: ['Water'],
+              mainDish: mealPlan['Monday']?['lunch']?['mainDish'] ?? 'N/A',
+              extraMeals: [mealPlan['Monday']?['lunch']?['extras'] ?? ''],
+              drinks: [mealPlan['Monday']?['lunch']?['drinks'] ?? ''],
               imageFile: _lunchImage,
               onUploadPhoto: () => _pickImage('LUNCH'),
               onTakePhoto: () => _takePhoto('LUNCH'),
@@ -122,9 +220,9 @@ class _PlanScreenState extends State<PlanScreen> {
               context: context,
               meal: 'SNACK',
               isDone: isSnackDone,
-              mainDish: 'Fruit Salad',
-              extraMeals: ['Yogurt', 'Granola Bar'],
-              drinks: ['Smoothie'],
+              mainDish: mealPlan['Monday']?['snack']?['mainDish'] ?? 'N/A',
+              extraMeals: [mealPlan['Monday']?['snack']?['extras'] ?? ''],
+              drinks: [mealPlan['Monday']?['snack']?['drinks'] ?? ''],
               imageFile: _snackImage,
               onUploadPhoto: () => _pickImage('SNACK'),
               onTakePhoto: () => _takePhoto('SNACK'),
@@ -139,9 +237,9 @@ class _PlanScreenState extends State<PlanScreen> {
               context: context,
               meal: 'DINNER',
               isDone: isDinnerDone,
-              mainDish: 'Salmon',
-              extraMeals: ['Quinoa', 'Roasted Vegetables'],
-              drinks: ['Herbal Tea'],
+              mainDish: mealPlan['Monday']?['dinner']?['mainDish'] ?? 'N/A',
+              extraMeals: [mealPlan['Monday']?['dinner']?['extras'] ?? ''],
+              drinks: [mealPlan['Monday']?['dinner']?['drinks'] ?? ''],
               imageFile: _dinnerImage,
               onUploadPhoto: () => _pickImage('DINNER'),
               onTakePhoto: () => _takePhoto('DINNER'),
@@ -199,24 +297,24 @@ class _PlanScreenState extends State<PlanScreen> {
               ),
               ElevatedButton(
                 style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all<Color>(
-                    isDone? Colors.green : Colors.red,
+                  backgroundColor: MaterialStateProperty.all<Color>(
+                    isDone ? Colors.green : Colors.red,
                   ),
-                  padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
+                  padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
                     const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
                   ),
-                  shape: WidgetStateProperty.all<RoundedRectangleBorder>(
+                  shape: MaterialStateProperty.all<RoundedRectangleBorder>(
                     RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30.0),
                     ),
                   ),
-                  elevation: WidgetStateProperty.all<double>(0), // Set elevation to 0
+                  elevation: MaterialStateProperty.all<double>(0),
                 ),
                 onPressed: () {
                   onStatusChanged(!isDone);
                 },
                 child: Text(
-                  isDone? 'Done' : 'In Progress',
+                  isDone ? 'Done' : 'In Progress',
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ),
@@ -269,8 +367,9 @@ class _PlanScreenState extends State<PlanScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all<Color>(colorLightBlue),
-                  padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
+                  backgroundColor:
+                      MaterialStateProperty.all<Color>(colorLightBlue),
+                  padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
                 ),
@@ -283,8 +382,9 @@ class _PlanScreenState extends State<PlanScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all<Color>(colorLightBlue),
-                  padding: WidgetStateProperty.all<EdgeInsetsGeometry>(
+                  backgroundColor:
+                      MaterialStateProperty.all<Color>(colorLightBlue),
+                  padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
                 ),
