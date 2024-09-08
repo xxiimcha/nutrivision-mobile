@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:sjq/models/contact.model.dart';
 import 'package:sjq/navigator.dart';
-import 'package:sjq/pages/pages.dart';
+import 'package:sjq/pages/chat/chat.screen.dart'; // Import ChatScreen correctly
 import 'package:sjq/themes/themes.dart';
 
 class ContactListViewer extends StatelessWidget {
   const ContactListViewer({super.key, required this.contacts});
   final Future<List<Contact>> contacts;
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Contact>>(
@@ -21,16 +22,20 @@ class ContactListViewer extends StatelessWidget {
             child: Text('Error: ${snapshot.error}'),
           );
         } else {
-          if (snapshot.data!.isEmpty) {
+          // Handle null and empty list cases
+          if (snapshot.data == null || snapshot.data!.isEmpty) {
             return const Center(
               child: Text('No Contacts'),
             );
           }
+
+          // Render the contact list
           return ListView.builder(
-              itemCount: snapshot.data!.length,
-              itemBuilder: (context, index) {
-                return ContactCard(contact: snapshot.data![index]);
-              });
+            itemCount: snapshot.data!.length,
+            itemBuilder: (context, index) {
+              return ContactCard(contact: snapshot.data![index]);
+            },
+          );
         }
       },
     );
@@ -55,6 +60,7 @@ class ContactCard extends StatelessWidget {
       ),
       child: ListTile(
         onTap: () {
+          // Navigate to ChatScreen with the contact's name
           AppNavigator().to(context, ChatScreen(userName: contact.name));
         },
         leading: const CircleAvatar(

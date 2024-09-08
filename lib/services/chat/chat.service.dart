@@ -1,38 +1,26 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
-
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:sjq/models/contact.model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ChatService {
-  Future<List<Contact>> getContacts(String nameQuery) async {
-    final jsonString = await rootBundle.loadString('assets/data/contacts.json');
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    late List<Contact> contacts;
-    final completer = Completer<List<Contact>>();
+  Future<List<Contact>> getContacts() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? loggedInUserId = prefs.getString('userId'); // Get logged-in user ID
 
-    // Create a Timer to complete the Completer after the random delay
-    //  This is just to show loading screen
-    // Generate a random duration between 0 and 1 seconds
-    final random = Random();
-    const maxSeconds = 2;
-    final delaySeconds = random.nextInt(maxSeconds + 1);
+    if (loggedInUserId == null) {
+      throw Exception('No logged-in user');
+    }
 
-    Timer(Duration(seconds: delaySeconds), () {
-      contacts = jsonList.map((json) => Contact.fromJson(json)).toList();
-      if (nameQuery.isNotEmpty) {
-        debugPrint(nameQuery);
-        contacts = contacts
-            .where((contact) =>
-                contact.name.toLowerCase().contains(nameQuery.toLowerCase()))
-            .toList();
-      }
-      debugPrint('Contacts: ${contacts.toSet()}');
-      completer.complete(contacts);
-    });
+    // Replace with your actual backend API URL
+    final response = await http.get(Uri.parse('http://localhost:5000/api/messages/conversations/$loggedInUserId'));
 
-    return completer.future;
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonList = jsonDecode(response.body);
+      List<Contact> contacts = jsonList.map((json) => Contact.fromJson(json)).toList();
+      return contacts;
+    } else {
+      throw Exception('Failed to load contacts');
+    }
   }
 }

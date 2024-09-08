@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:sjq/models/contact.model.dart';
-import 'package:sjq/pages/chat/_contact_list.dart';
 import 'package:sjq/services/chat/chat.service.dart';
-import 'package:sjq/themes/color.dart';
-import 'package:sjq/themes/typography.dart';
+import 'package:sjq/models/contact.model.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -21,12 +18,12 @@ class _ChatPageState extends State<ChatPage> {
   @override
   void initState() {
     super.initState();
-    contacts = chatService.getContacts("");
+    contacts = chatService.getContacts(); // Fetch contacts from the backend
   }
 
   onSearchQuery(String text) {
     setState(() {
-      contacts = chatService.getContacts(text);
+      contacts = chatService.getContacts(); // Re-fetch contacts with search query
     });
   }
 
@@ -34,159 +31,107 @@ class _ChatPageState extends State<ChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: colorLightBlue,
-        title: const Text("TELEMEDECINE", style: headingS),
+        title: const Text("TELEMEDICINE", style: TextStyle(color: Colors.white)),
         centerTitle: true,
-        elevation: 3,
+        backgroundColor: Colors.blue,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 255, 255, 255),
-              Color.fromARGB(255, 255, 255, 255),
-            ],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 8), // Adjust horizontal padding here
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8), // Add space above the search container
-              Container(
-                height: 40,
-                width: 700,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF96B0D7),
-                  borderRadius: BorderRadius.circular(20), // Circular edges
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
+              child: TextField(
+                controller: searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  prefixIcon: Icon(Icons.search),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 200,
-                      child: Form(
-                        key: formKey,
-                        child: TextFormField(
-                          controller: searchController,
-                          style: paragraphM.copyWith(color: Colors.white),
-                          onChanged: onSearchQuery,
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(
-                              Icons.search,
-                              color: Colors.white,
-                            ),
-                            hintText: 'Search',
-                            hintStyle: paragraphL.copyWith(color: Colors.white),
-                            border: InputBorder.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                onChanged: (text) => onSearchQuery(text),
               ),
-              const SizedBox(height: 8), // Add space below the search container
-              Expanded(
-                child: ContactListViewer(
-                  contacts: contacts,
-                ),
+            ),
+
+            // Display the contact list
+            Expanded(
+              child: FutureBuilder<List<Contact>>(
+                future: contacts,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return const Center(child: Text('Error loading contacts'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No contacts available'));
+                  } else {
+                    final contactList = snapshot.data!;
+                    return ListView.builder(
+                      itemCount: contactList.length,
+                      itemBuilder: (context, index) {
+                        final contact = contactList[index];
+                        return ListTile(
+                          title: Text(contact.name),
+                          subtitle: Text("HELLO"),
+                          onTap: () {
+                            // Navigate to chat screen with selected contact
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatScreen(
+                                  userName: contact.name, // Pass the contact name to ChatScreen
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  }
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class ChatScreen extends StatefulWidget {
-  final String userName;
+// ChatScreen to display the chat with the selected contact
+class ChatScreen extends StatelessWidget {
+  final String userName; // Passed from the ContactList
 
   const ChatScreen({super.key, required this.userName});
-
-  @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _messageController = TextEditingController();
-  List<ChatMessage> chatMessages = []; // List to hold chat messages
-
-  void _sendMessage() {
-    String message = _messageController.text;
-    setState(() {
-      chatMessages.add(ChatMessage(
-        // Append the new message at the end of the list
-        sender: widget.userName,
-        message: message,
-        isMe: true, // Set the message sender as the current user
-      ));
-    });
-    // Clear the text field after sending the message
-    _messageController.clear();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF96B0D7),
-        title: Row(
-          children: [
-            const CircleAvatar(
-              child: Icon(Icons.account_circle),
-            ),
-            const SizedBox(width: 8),
-            Text(widget.userName),
-          ],
-        ),
+        title: Text(userName), // Display the contact's name
+        backgroundColor: Colors.blue,
       ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                reverse: true, // Reverse the ListView to start from the bottom
-                itemCount: chatMessages.length,
-                itemBuilder: (context, index) {
-                  final reversedIndex = chatMessages.length - 1 - index;
-                  final message = chatMessages[reversedIndex];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Align(
-                      alignment: message.isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          color: message.isMe
-                              ? const Color.fromARGB(255, 0, 167, 22)
-                              : Colors.grey,
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Text(message.message,
-                            style: const TextStyle(
-                                color: Color.fromARGB(255, 0, 0, 0))),
-                      ),
-                    ),
-                  );
-                },
-              ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView(
+              children: const [
+                // Display chat messages here
+                Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: Text('Conversation will appear here'),
+                ),
+              ],
             ),
-            Row(
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _messageController,
                     decoration: const InputDecoration(
                       hintText: 'Type a message...',
                     ),
@@ -194,22 +139,15 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  onPressed: () {
+                    // Handle sending message
+                  },
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
-
-class ChatMessage {
-  final String sender;
-  final String message;
-  final bool isMe;
-
-  ChatMessage(
-      {required this.sender, required this.message, required this.isMe});
 }
