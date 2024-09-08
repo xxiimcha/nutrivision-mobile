@@ -148,7 +148,7 @@ class _PlanScreenState extends State<PlanScreen> {
       if (userId != null) {
         final request = http.MultipartRequest(
           'POST',
-          Uri.parse('http://localhost:5000/api/upload'),
+          Uri.parse('http://localhost:5000/api/mealplans/upload'),
         );
         request.files.add(await http.MultipartFile.fromPath('image', image.path));
         request.fields['userId'] = userId;
