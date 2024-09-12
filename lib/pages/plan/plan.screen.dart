@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sjq/themes/themes.dart';
+
 class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key});
 
@@ -62,7 +63,6 @@ class _PlanScreenState extends State<PlanScreen> {
             final List<dynamic> data = jsonDecode(mealPlanResponse.body);
 
             if (data.isNotEmpty) {
-              // Assuming you want to use the first meal plan in the list
               setState(() {
                 mealPlan = data.first as Map<String, dynamic>;
               });
@@ -177,86 +177,115 @@ class _PlanScreenState extends State<PlanScreen> {
         centerTitle: true,
         elevation: 3,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildMealCard(
-              context: context,
-              meal: 'BREAKFAST',
-              isDone: isBreakfastDone,
-              mainDish: mealPlan['Monday']?['breakfast']?['mainDish'] ?? 'N/A',
-              extraMeals: [mealPlan['Monday']?['breakfast']?['extras'] ?? ''],
-              drinks: [mealPlan['Monday']?['breakfast']?['drinks'] ?? ''],
-              imageFile: _breakfastImage,
-              onUploadPhoto: () => _pickImage('BREAKFAST'),
-              onTakePhoto: () => _takePhoto('BREAKFAST'),
-              onStatusChanged: (status) {
-                setState(() {
-                  isBreakfastDone = status;
-                });
-              },
+      body: mealPlan.isNotEmpty
+          ? SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: ExpansionPanelList.radio(
+                children: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                    .asMap()
+                    .entries
+                    .map((entry) {
+                  int index = entry.key;
+                  String day = entry.value;
+                  return ExpansionPanelRadio(
+                    value: index, // Unique identifier for each panel
+                    headerBuilder: (BuildContext context, bool isExpanded) {
+                      return ListTile(
+                        title: Text(
+                          day,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
+                    body: Column(
+                      children: [
+                        _buildMealCard(
+                          context: context,
+                          day: day,
+                          meal: 'BREAKFAST',
+                          isDone: isBreakfastDone,
+                          mainDish: mealPlan[day]?['breakfast']?['mainDish'] ?? 'N/A',
+                          extraMeals: [mealPlan[day]?['breakfast']?['extras'] ?? ''],
+                          drinks: [mealPlan[day]?['breakfast']?['drinks'] ?? ''],
+                          imageFile: _breakfastImage,
+                          onUploadPhoto: () => _pickImage('BREAKFAST'),
+                          onTakePhoto: () => _takePhoto('BREAKFAST'),
+                          onStatusChanged: (status) {
+                            setState(() {
+                              isBreakfastDone = status;
+                            });
+                          },
+                        ),
+                        _buildMealCard(
+                          context: context,
+                          day: day,
+                          meal: 'LUNCH',
+                          isDone: isLunchDone,
+                          mainDish: mealPlan[day]?['lunch']?['mainDish'] ?? 'N/A',
+                          extraMeals: [mealPlan[day]?['lunch']?['extras'] ?? ''],
+                          drinks: [mealPlan[day]?['lunch']?['drinks'] ?? ''],
+                          imageFile: _lunchImage,
+                          onUploadPhoto: () => _pickImage('LUNCH'),
+                          onTakePhoto: () => _takePhoto('LUNCH'),
+                          onStatusChanged: (status) {
+                            setState(() {
+                              isLunchDone = status;
+                            });
+                          },
+                        ),
+                        _buildMealCard(
+                          context: context,
+                          day: day,
+                          meal: 'SNACK',
+                          isDone: isSnackDone,
+                          mainDish: mealPlan[day]?['snack']?['mainDish'] ?? 'N/A',
+                          extraMeals: [mealPlan[day]?['snack']?['extras'] ?? ''],
+                          drinks: [mealPlan[day]?['snack']?['drinks'] ?? ''],
+                          imageFile: _snackImage,
+                          onUploadPhoto: () => _pickImage('SNACK'),
+                          onTakePhoto: () => _takePhoto('SNACK'),
+                          onStatusChanged: (status) {
+                            setState(() {
+                              isSnackDone = status;
+                            });
+                          },
+                        ),
+                        _buildMealCard(
+                          context: context,
+                          day: day,
+                          meal: 'DINNER',
+                          isDone: isDinnerDone,
+                          mainDish: mealPlan[day]?['dinner']?['mainDish'] ?? 'N/A',
+                          extraMeals: [mealPlan[day]?['dinner']?['extras'] ?? ''],
+                          drinks: [mealPlan[day]?['dinner']?['drinks'] ?? ''],
+                          imageFile: _dinnerImage,
+                          onUploadPhoto: () => _pickImage('DINNER'),
+                          onTakePhoto: () => _takePhoto('DINNER'),
+                          onStatusChanged: (status) {
+                            setState(() {
+                              isDinnerDone = status;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            )
+          : const Center(
+              child: Text(
+                'No meal plans found for the current or previous week',
+                style: TextStyle(fontSize: 18, color: Colors.black),
+              ),
             ),
-            const SizedBox(height: 20),
-            _buildMealCard(
-              context: context,
-              meal: 'LUNCH',
-              isDone: isLunchDone,
-              mainDish: mealPlan['Monday']?['lunch']?['mainDish'] ?? 'N/A',
-              extraMeals: [mealPlan['Monday']?['lunch']?['extras'] ?? ''],
-              drinks: [mealPlan['Monday']?['lunch']?['drinks'] ?? ''],
-              imageFile: _lunchImage,
-              onUploadPhoto: () => _pickImage('LUNCH'),
-              onTakePhoto: () => _takePhoto('LUNCH'),
-              onStatusChanged: (status) {
-                setState(() {
-                  isLunchDone = status;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            _buildMealCard(
-              context: context,
-              meal: 'SNACK',
-              isDone: isSnackDone,
-              mainDish: mealPlan['Monday']?['snack']?['mainDish'] ?? 'N/A',
-              extraMeals: [mealPlan['Monday']?['snack']?['extras'] ?? ''],
-              drinks: [mealPlan['Monday']?['snack']?['drinks'] ?? ''],
-              imageFile: _snackImage,
-              onUploadPhoto: () => _pickImage('SNACK'),
-              onTakePhoto: () => _takePhoto('SNACK'),
-              onStatusChanged: (status) {
-                setState(() {
-                  isSnackDone = status;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
-            _buildMealCard(
-              context: context,
-              meal: 'DINNER',
-              isDone: isDinnerDone,
-              mainDish: mealPlan['Monday']?['dinner']?['mainDish'] ?? 'N/A',
-              extraMeals: [mealPlan['Monday']?['dinner']?['extras'] ?? ''],
-              drinks: [mealPlan['Monday']?['dinner']?['drinks'] ?? ''],
-              imageFile: _dinnerImage,
-              onUploadPhoto: () => _pickImage('DINNER'),
-              onTakePhoto: () => _takePhoto('DINNER'),
-              onStatusChanged: (status) {
-                setState(() {
-                  isDinnerDone = status;
-                });
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   Widget _buildMealCard({
     required BuildContext context,
+    required String day,
     required String meal,
     required bool isDone,
     required String mainDish,
@@ -288,7 +317,7 @@ class _PlanScreenState extends State<PlanScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                meal,
+                '$meal for $day',
                 style: const TextStyle(
                   color: Colors.black,
                   fontSize: 18,
@@ -345,7 +374,7 @@ class _PlanScreenState extends State<PlanScreen> {
           if (imageFile != null)
             Center(
               child: Image.file(
-                imageFile,
+                imageFile!,
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
@@ -367,8 +396,7 @@ class _PlanScreenState extends State<PlanScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ButtonStyle(
-                  backgroundColor:
-                      MaterialStateProperty.all<Color>(colorLightBlue),
+                  backgroundColor: MaterialStateProperty.all<Color>(colorLightBlue),
                   padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),
@@ -382,8 +410,7 @@ class _PlanScreenState extends State<PlanScreen> {
                   style: TextStyle(color: Colors.white),
                 ),
                 style: ButtonStyle(
-                  backgroundColor:
-                      MaterialStateProperty.all<Color>(colorLightBlue),
+                  backgroundColor: MaterialStateProperty.all<Color>(colorLightBlue),
                   padding: MaterialStateProperty.all<EdgeInsetsGeometry>(
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   ),

@@ -80,29 +80,32 @@ class _FormScreenState extends State<FormScreen> {
     double height = double.tryParse(heightController.text) ?? 0;
     int ageInMonths = _calculateAgeInMonths();
 
-    if (weight < 2.5) {
-      weightForAge = 'Underweight';
-    } else {
-      weightForAge = 'Normal';
+    if (weight <= 0 || height <= 0 || ageInMonths == 0) {
+      setState(() {
+        nutritionStatus = 'Unknown';
+      });
+      return;
     }
 
-    if (height < 45) {
-      heightForAge = 'Stunted';
+    // BMI Calculation
+    double heightInMeters = height / 100; // Convert height to meters
+    double bmi = weight / (heightInMeters * heightInMeters);
+
+    // Evaluate based on BMI percentiles (you can add specific percentiles based on age and gender)
+    if (bmi < 14) {
+      nutritionStatus = 'Underweight';
+    } else if (bmi >= 14 && bmi < 18.5) {
+      nutritionStatus = 'Normal';
+    } else if (bmi >= 18.5 && bmi < 25) {
+      nutritionStatus = 'Overweight';
     } else {
-      heightForAge = 'Normal';
+      nutritionStatus = 'Obese';
     }
 
-    if (weight / (height * height) > 25) {
-      weightForHeight = 'Obese';
-    } else if (weight / (height * height) < 18.5) {
-      weightForHeight = 'Wasted';
-    } else {
-      weightForHeight = 'Normal';
-    }
-
-    nutritionStatus = (weightForAge == 'Normal' && heightForAge == 'Normal' && weightForHeight == 'Normal')
-        ? 'Normal'
-        : 'Malnourished';
+    // You can also adjust weight-for-age, height-for-age, and weight-for-height based on the computed BMI
+    weightForAge = bmi < 14 ? 'Underweight' : 'Normal';
+    heightForAge = height < 100 ? 'Stunted' : 'Normal';
+    weightForHeight = bmi >= 25 ? 'Obese' : 'Normal';
 
     setState(() {});
   }
