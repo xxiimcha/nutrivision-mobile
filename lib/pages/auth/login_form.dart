@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import '../home/home.screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../home/home.screen.dart'; // Import the HomeScreen
+
+// Assuming these are defined somewhere in your themes file
 import 'package:sjq/themes/themes.dart';
+
+// Assuming this is a separate widget in your project
 import 'package:sjq/pages/auth/_buttons.dart'; 
 
 class LoginForm extends StatelessWidget {
@@ -27,10 +30,9 @@ class LoginForm extends StatelessWidget {
       };
 
       try {
-        final apiUrl = dotenv.env['API_URL'] ?? 'http://localhost:5000';
         // Send login request to the server
         final response = await http.post(
-          Uri.parse('$apiUrl/api/auth/login'), // Use API URL from dotenv
+          Uri.parse('http://localhost:5000/api/auth/login'), // Adjust the URL as needed
           headers: {'Content-Type': 'application/json'},
           body: json.encode(loginDetails),
         );
