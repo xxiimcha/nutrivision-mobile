@@ -54,13 +54,19 @@ class EventCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final eventDateTime = DateTime.parse(event.date);
     final formattedDate = DateFormat.yMMMMd().format(eventDateTime);
-    
+
+    // Ensure event.location is not null, and provide a default value if it is null
+    final eventLocation = event.location ?? 'Location not provided';
+
+    // Parse event.time and format it to 12-hour format
+    final eventTime = DateFormat.jm().format(DateFormat.Hm().parse(event.time));
+
     return Column(
       children: [
         display('PROGRAM: ${event.title}'),
         display('DATE: $formattedDate'),
-        display('LOCATION: ${event.place}'),
-        display('TIME: ${event.time}'),
+        display('LOCATION: $eventLocation'),
+        display('TIME: $eventTime'),
       ],
     );
   }

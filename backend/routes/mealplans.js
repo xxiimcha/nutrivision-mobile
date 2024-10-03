@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const MealPlan = require('../models/MealPlan');
+const multer = require('multer');
+const path = require('path');
 
 // Create a new meal plan
 router.post('/', async (req, res) => {
@@ -11,6 +13,55 @@ router.post('/', async (req, res) => {
   } catch (error) {
     console.error('Error creating meal plan:', error);
     res.status(500).json({ message: 'Error creating meal plan', error });
+  }
+});
+
+// Set up multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads'); // Make sure you have an 'uploads' folder in your project root
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+const upload = multer({ storage });
+
+router.post('/upload', upload.single('image'), async (req, res) => {
+  try {
+    const { userId, mealType } = req.body;
+
+    if (!mealType) {
+      return res.status(400).json({ message: 'mealType is required' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    // Get the file path
+    const filePath = req.file.path;
+
+    // Update the meal plan's photo field with the file path
+    const updatedMealPlan = await MealPlan.findOneAndUpdate(
+      { patientId: userId },
+      {
+        $set: {
+          photo: filePath, // Set the photo field directly
+        },
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedMealPlan) {
+      return res.status(404).json({ message: 'Meal plan not found' });
+    }
+
+    res.status(200).json({ message: 'Image uploaded successfully', mealPlan: updatedMealPlan });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ message: 'Error uploading image', error });
   }
 });
 

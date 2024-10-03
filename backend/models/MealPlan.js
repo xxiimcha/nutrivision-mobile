@@ -4,6 +4,7 @@ const mealSchema = new mongoose.Schema({
   mainDish: { type: String, default: '' },
   drinks: { type: String, default: '' },
   vitamins: { type: String, default: '' },
+  photo: { type: String, default: '' },  // URL or path to the photo
   status: { type: String, enum: ['done', 'in-progress', ''], default: '' },
   approved: { type: Boolean, default: false },  // Add this field to track approval status
 });

@@ -38,7 +38,7 @@ target_include_directories(flutter INTERFACE
 )
 target_link_libraries(flutter INTERFACE "${FLUTTER_LIBRARY}.lib")
 add_dependencies(flutter flutter_assemble)
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /wd4996")
 # === Wrapper ===
 list(APPEND CPP_WRAPPER_SOURCES_CORE
   "core_implementations.cc"

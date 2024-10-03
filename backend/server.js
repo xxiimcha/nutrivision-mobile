@@ -5,6 +5,14 @@ const cors = require('cors');
 
 const app = express();
 
+const fs = require('fs');
+const uploadDir = './uploads';
+
+// Check if the 'uploads' directory exists, if not, create it
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
 // Middleware
 app.use(bodyParser.json());
 app.use(cors());

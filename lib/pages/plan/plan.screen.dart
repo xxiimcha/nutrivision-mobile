@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sjq/themes/themes.dart';
+import 'package:intl/intl.dart'; // For formatting dates
 
 class PlanScreen extends StatefulWidget {
   const PlanScreen({super.key});
@@ -29,6 +30,8 @@ class _PlanScreenState extends State<PlanScreen> {
   final ImagePicker _picker = ImagePicker();
 
   Map<String, dynamic> mealPlan = {};
+  DateTime selectedDate = DateTime.now(); // Initialize with current date
+  String selectedWeek = ''; // To track the selected week for meal plans
 
   @override
   void initState() {
@@ -36,7 +39,7 @@ class _PlanScreenState extends State<PlanScreen> {
     _loadMealPlan();
   }
 
-  // Method to load the meal plan
+  // Method to load the meal plan for the selected date or week
   Future<void> _loadMealPlan() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -53,9 +56,9 @@ class _PlanScreenState extends State<PlanScreen> {
           final patientData = jsonDecode(patientResponse.body);
           final patientId = patientData['_id'];
 
-          // Now fetch the meal plan for this patient
+          // Now fetch the meal plan for this patient and the selected week
           final mealPlanResponse = await http.get(
-            Uri.parse('http://localhost:5000/api/mealplans/$patientId'),
+            Uri.parse('http://localhost:5000/api/mealplans/$patientId/$selectedWeek'),
             headers: {'Content-Type': 'application/json'},
           );
 
@@ -83,64 +86,83 @@ class _PlanScreenState extends State<PlanScreen> {
     }
   }
 
-  // Method to pick an image from the gallery
+  // Method to pick an image from the gallery and show preview modal
   Future<void> _pickImage(String mealType) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
-    setState(() {
-      if (pickedFile != null) {
-        switch (mealType) {
-          case 'BREAKFAST':
-            _breakfastImage = File(pickedFile.path);
-            _uploadImage(_breakfastImage!);
-            break;
-          case 'LUNCH':
-            _lunchImage = File(pickedFile.path);
-            _uploadImage(_lunchImage!);
-            break;
-          case 'SNACK':
-            _snackImage = File(pickedFile.path);
-            _uploadImage(_snackImage!);
-            break;
-          case 'DINNER':
-            _dinnerImage = File(pickedFile.path);
-            _uploadImage(_dinnerImage!);
-            break;
-        }
-      }
-    });
+    if (pickedFile != null) {
+      _showPreviewModal(File(pickedFile.path), mealType);
+    }
   }
 
-  // Method to take a photo using the camera
+  // Method to take a photo using the camera and show preview modal
   Future<void> _takePhoto(String mealType) async {
     final pickedFile = await _picker.pickImage(source: ImageSource.camera);
 
-    setState(() {
-      if (pickedFile != null) {
-        switch (mealType) {
-          case 'BREAKFAST':
-            _breakfastImage = File(pickedFile.path);
-            _uploadImage(_breakfastImage!);
-            break;
-          case 'LUNCH':
-            _lunchImage = File(pickedFile.path);
-            _uploadImage(_lunchImage!);
-            break;
-          case 'SNACK':
-            _snackImage = File(pickedFile.path);
-            _uploadImage(_snackImage!);
-            break;
-          case 'DINNER':
-            _dinnerImage = File(pickedFile.path);
-            _uploadImage(_dinnerImage!);
-            break;
-        }
-      }
-    });
+    if (pickedFile != null) {
+      _showPreviewModal(File(pickedFile.path), mealType);
+    }
+  }
+
+  // Method to show the preview modal with options to upload or reselect
+  void _showPreviewModal(File imageFile, String mealType) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: 400,
+          child: Column(
+            children: [
+              Text(
+                'Preview $mealType Image',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Image.file(
+                  imageFile,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close the modal
+                      _uploadImage(imageFile, mealType); // Upload the image
+                    },
+                    child: const Text('Upload Now'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close the modal
+                      _reselectImage(mealType); // Allow user to reselect the image
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text('Reselect Image'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Method to allow the user to reselect an image
+  Future<void> _reselectImage(String mealType) async {
+    _pickImage(mealType);
   }
 
   // Method to upload an image file to the server
-  Future<void> _uploadImage(File image) async {
+  Future<void> _uploadImage(File image, String mealType) async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('userId');
@@ -152,10 +174,27 @@ class _PlanScreenState extends State<PlanScreen> {
         );
         request.files.add(await http.MultipartFile.fromPath('image', image.path));
         request.fields['userId'] = userId;
+        request.fields['mealType'] = mealType; // Pass the meal type
 
         final response = await request.send();
 
         if (response.statusCode == 200) {
+          setState(() {
+            switch (mealType) {
+              case 'BREAKFAST':
+                _breakfastImage = image;
+                break;
+              case 'LUNCH':
+                _lunchImage = image;
+                break;
+              case 'SNACK':
+                _snackImage = image;
+                break;
+              case 'DINNER':
+                _dinnerImage = image;
+                break;
+            }
+          });
           print('Image uploaded successfully');
         } else {
           print('Failed to upload image: ${response.statusCode}');
@@ -168,6 +207,35 @@ class _PlanScreenState extends State<PlanScreen> {
     }
   }
 
+  // Method to select a date using a calendar
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime(2020), // Change this to your desired start date
+      lastDate: DateTime(2101),
+    );
+
+    if (pickedDate != null && pickedDate != selectedDate) {
+      setState(() {
+        selectedDate = pickedDate;
+        selectedWeek = _getWeekOfYear(selectedDate); // Get the week based on the selected date
+        _loadMealPlan(); // Reload meal plan for the selected week
+      });
+    }
+  }
+
+  // Helper function to calculate the day of the year
+  int _getDayOfYear(DateTime date) {
+    return int.parse(DateFormat("D").format(date));
+  }
+
+  // Helper function to get the week number of a given date
+  String _getWeekOfYear(DateTime date) {
+    final weekNumber = ((_getDayOfYear(date) - date.weekday + 10) / 7).floor();
+    return 'Week $weekNumber, ${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,6 +244,14 @@ class _PlanScreenState extends State<PlanScreen> {
         title: const Text("NUTRITIONAL PLAN", style: headingS),
         centerTitle: true,
         elevation: 3,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_today),
+            onPressed: () {
+              _selectDate(context); // Trigger the date picker
+            },
+          ),
+        ],
       ),
       body: mealPlan.isNotEmpty
           ? SingleChildScrollView(
@@ -205,7 +281,7 @@ class _PlanScreenState extends State<PlanScreen> {
                           meal: 'BREAKFAST',
                           isDone: isBreakfastDone,
                           mainDish: mealPlan[day]?['breakfast']?['mainDish'] ?? 'N/A',
-                          extraMeals: [mealPlan[day]?['breakfast']?['extras'] ?? ''],
+                          vitamins: [mealPlan[day]?['breakfast']?['vitamins'] ?? ''],
                           drinks: [mealPlan[day]?['breakfast']?['drinks'] ?? ''],
                           imageFile: _breakfastImage,
                           onUploadPhoto: () => _pickImage('BREAKFAST'),
@@ -222,7 +298,7 @@ class _PlanScreenState extends State<PlanScreen> {
                           meal: 'LUNCH',
                           isDone: isLunchDone,
                           mainDish: mealPlan[day]?['lunch']?['mainDish'] ?? 'N/A',
-                          extraMeals: [mealPlan[day]?['lunch']?['extras'] ?? ''],
+                          vitamins: [mealPlan[day]?['lunch']?['vitamins'] ?? ''],
                           drinks: [mealPlan[day]?['lunch']?['drinks'] ?? ''],
                           imageFile: _lunchImage,
                           onUploadPhoto: () => _pickImage('LUNCH'),
@@ -239,7 +315,7 @@ class _PlanScreenState extends State<PlanScreen> {
                           meal: 'SNACK',
                           isDone: isSnackDone,
                           mainDish: mealPlan[day]?['snack']?['mainDish'] ?? 'N/A',
-                          extraMeals: [mealPlan[day]?['snack']?['extras'] ?? ''],
+                          vitamins: [mealPlan[day]?['snack']?['vitamins'] ?? ''],
                           drinks: [mealPlan[day]?['snack']?['drinks'] ?? ''],
                           imageFile: _snackImage,
                           onUploadPhoto: () => _pickImage('SNACK'),
@@ -256,7 +332,7 @@ class _PlanScreenState extends State<PlanScreen> {
                           meal: 'DINNER',
                           isDone: isDinnerDone,
                           mainDish: mealPlan[day]?['dinner']?['mainDish'] ?? 'N/A',
-                          extraMeals: [mealPlan[day]?['dinner']?['extras'] ?? ''],
+                          vitamins: [mealPlan[day]?['dinner']?['vitamins'] ?? ''],
                           drinks: [mealPlan[day]?['dinner']?['drinks'] ?? ''],
                           imageFile: _dinnerImage,
                           onUploadPhoto: () => _pickImage('DINNER'),
@@ -289,7 +365,7 @@ class _PlanScreenState extends State<PlanScreen> {
     required String meal,
     required bool isDone,
     required String mainDish,
-    required List<String> extraMeals,
+    required List<String> vitamins,
     required List<String> drinks,
     required File? imageFile,
     required Function() onUploadPhoto,
@@ -354,11 +430,11 @@ class _PlanScreenState extends State<PlanScreen> {
             'Main Dish: $mainDish',
             fontSize: 16,
           ),
-          if (extraMeals.isNotEmpty)
+          if (vitamins.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8.0),
               child: _buildBorderedText(
-                'Extra Meals: ${extraMeals.join(', ')}',
+                'Vitamins: ${vitamins.join(', ')}',
                 fontSize: 14,
               ),
             ),
@@ -367,8 +443,7 @@ class _PlanScreenState extends State<PlanScreen> {
               padding: const EdgeInsets.only(top: 8.0),
               child: _buildBorderedText(
                 'Drinks: ${drinks.join(', ')}',
-                fontSize: 14,
-              ),
+                fontSize: 14),
             ),
           const SizedBox(height: 10),
           if (imageFile != null)

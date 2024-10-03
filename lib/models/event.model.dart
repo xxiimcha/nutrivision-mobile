@@ -1,14 +1,14 @@
 class Event {
   int id;
   final String title;
-  final String place;
+  final String location;
   final String time;
   final String date;
 
   Event({
     this.id = 0,
     this.title = '',
-    this.place = '',
+    this.location = '',
     this.time = '',
     this.date = '',
   });
@@ -18,7 +18,7 @@ class Event {
     return {
       'id': id,
       'title': title,
-      'place': place,
+      'location': location,
       'time': time,
       'date': date,
     };
@@ -29,7 +29,7 @@ class Event {
     return Event(
       id: json['id'] ?? 0,
       title: json['title'] ?? '',
-      place: json['place'] ?? '',
+      location: json['location'] ?? '',
       time: json['time'] ?? '',
       date: json['date'] ?? '',
     );
@@ -37,6 +37,6 @@ class Event {
 
   @override
   String toString() {
-    return 'Event: $title, Location: $place, Date: $date';
+    return 'Event: $title, Location: $location, Date: $date';
   }
 }
