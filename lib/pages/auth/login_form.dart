@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../home/home.screen.dart'; // Import the HomeScreen
+import 'package:sjq/pages/auth/forgot_password_page.dart'; // Import the ForgotPasswordPage
 
 // Assuming these are defined somewhere in your themes file
 import 'package:sjq/themes/themes.dart';
@@ -90,17 +91,29 @@ class LoginForm extends StatelessWidget {
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Please enter a password';
-              } else if (value.length < 8) {
-                return 'Password must be at least 8 characters';
-              } else if (!RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$').hasMatch(value)) {
-                return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character';
               }
               return null;
             },
           ),
-          const Row(
+          const SizedBox(height: 20),
+          Row(
             mainAxisAlignment: MainAxisAlignment.end,
-            children: [ForgotPasswordButton()],
+            children: [
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ForgotPasswordPage(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Forgot Password?',
+                  style: TextStyle(color: Colors.blue, fontSize: 16),
+                ),
+              ),
+            ],
           ),
         ],
       ),

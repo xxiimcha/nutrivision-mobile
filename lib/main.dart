@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
-import 'package:sjq/routes.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:sjq/routes.dart';  // Your existing routes
 
-void main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
   runApp(const Main());
 }
 
