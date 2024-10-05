@@ -1,50 +1,73 @@
 class Client {
-  final String address;
-  final String guardian;
-  final String name;
-  final String dob;
-  final String gender;
-  final String height;
-  final String weight;
-  final String dateOfWeighing;
-  final String weightForAge;
-  final String heightForAge;
-  final String weightForHeight;
-  final String nutritionStatus;
-  final int ageInMonths;
-  final String userId; // Add the new field for userId
+  String? guardian;
+  String? address;
+  String? name;
+  String? dob;
+  String? gender;
+  String? height;
+  String? weight;
+  String? dateOfWeighing;
+  String? weightForAge;
+  String? heightForAge;
+  String? weightForHeight;
+  String? nutritionStatus;
+  int? ageInMonths;
+  String? userId;
 
   Client({
-    required this.address,
-    required this.guardian,
-    required this.name,
-    required this.dob,
-    required this.gender,
-    required this.height,
-    required this.weight,
-    required this.dateOfWeighing,
-    required this.weightForAge,
-    required this.heightForAge,
-    required this.weightForHeight,
-    required this.nutritionStatus,
-    required this.ageInMonths,
-    required this.userId, // Include in the constructor
+    this.guardian,
+    this.address,
+    this.name,
+    this.dob,
+    this.gender,
+    this.height,
+    this.weight,
+    this.dateOfWeighing,
+    this.weightForAge,
+    this.heightForAge,
+    this.weightForHeight,
+    this.nutritionStatus,
+    this.ageInMonths,
+    this.userId,
   });
 
-  Map<String, dynamic> toJson() => {
-    'address': address,
-    'guardian': guardian,
-    'name': name,
-    'dob': dob,
-    'gender': gender,
-    'height': height,
-    'weight': weight,
-    'dateOfWeighing': dateOfWeighing,
-    'weightForAge': weightForAge,
-    'heightForAge': heightForAge,
-    'weightForHeight': weightForHeight,
-    'nutritionStatus': nutritionStatus,
-    'ageInMonths': ageInMonths,
-    'userId': userId, // Include in the JSON serialization
-  };
+  // Factory constructor to create a Client from JSON
+  factory Client.fromJson(Map<String, dynamic> json) {
+    return Client(
+      guardian: json['guardian'],
+      address: json['address'],
+      name: json['name'],
+      dob: json['dob'],
+      gender: json['gender'],
+      height: json['height'],
+      weight: json['weight'],
+      dateOfWeighing: json['dateOfWeighing'],
+      weightForAge: json['weightForAge'],
+      heightForAge: json['heightForAge'],
+      weightForHeight: json['weightForHeight'],
+      nutritionStatus: json['nutritionStatus'],
+      ageInMonths: json['ageInMonths'],
+      userId: json['userId'],
+    );
+  }
+
+  // Method to convert a Client object to JSON
+  Map<String, dynamic> toJson() {
+    return {
+      'guardian': guardian,
+      'address': address,
+      'name': name,
+      'dob': dob,
+      'gender': gender,
+      'height': height,
+      'weight': weight,
+      'dateOfWeighing': dateOfWeighing,
+      'weightForAge': weightForAge,
+      'heightForAge': heightForAge,
+      'weightForHeight': weightForHeight,
+      'nutritionStatus': nutritionStatus,
+      'ageInMonths': ageInMonths,
+      'userId': userId,
+    };
+  }
 }

@@ -36,54 +36,78 @@ class _PlanScreenState extends State<PlanScreen> {
   @override
   void initState() {
     super.initState();
-    _loadMealPlan();
+    selectedWeek = _getWeekOfYear(selectedDate); // Set the current week
+    _loadMealPlan(); // Load initial meal plan
   }
 
-  // Method to load the meal plan for the selected date or week
   Future<void> _loadMealPlan() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('userId');
 
-      if (userId != null) {
-        // Fetch the patient record
-        final patientResponse = await http.get(
-          Uri.parse('http://localhost:5000/api/patients/$userId'),
-          headers: {'Content-Type': 'application/json'},
-        );
+      if (userId == null) {
+        print('Error: User ID not found in SharedPreferences.');
+        return;
+      }
 
-        if (patientResponse.statusCode == 200) {
-          final patientData = jsonDecode(patientResponse.body);
-          final patientId = patientData['_id'];
+      // Fetch the patient record
+      final patientResponse = await http.get(
+        Uri.parse('http://localhost:5000/api/patients/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      );
 
-          // Now fetch the meal plan for this patient and the selected week
-          final mealPlanResponse = await http.get(
-            Uri.parse('http://localhost:5000/api/mealplans/$patientId/$selectedWeek'),
-            headers: {'Content-Type': 'application/json'},
-          );
+      if (patientResponse.statusCode != 200) {
+        print('Failed to load patient record: ${patientResponse.reasonPhrase}');
+        return;
+      }
 
-          if (mealPlanResponse.statusCode == 200) {
-            final List<dynamic> data = jsonDecode(mealPlanResponse.body);
+      final patientData = jsonDecode(patientResponse.body);
+      final patientId = patientData['_id'];
 
-            if (data.isNotEmpty) {
-              setState(() {
-                mealPlan = data.first as Map<String, dynamic>;
-              });
-            } else {
-              print('No meal plans found for this patient.');
-            }
-          } else {
-            print('Failed to load meal plan: ${mealPlanResponse.reasonPhrase}');
-          }
+      // Fetch the meal plan for this patient and the selected week
+      // Make sure selectedWeek is formatted properly to match your DB format
+      final mealPlanResponse = await http.get(
+        Uri.parse('http://localhost:5000/api/mealplans/$patientId/$selectedWeek'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (mealPlanResponse.statusCode == 200) {
+        final responseData = jsonDecode(mealPlanResponse.body);
+
+        if (responseData != null && responseData.isNotEmpty) {
+          setState(() {
+            mealPlan = responseData as Map<String, dynamic>;
+          });
         } else {
-          print('Failed to load patient record: ${patientResponse.reasonPhrase}');
+          setState(() {
+            mealPlan = {};
+          });
+          print('No meal plans found for this week.');
         }
       } else {
-        print('User ID not found in SharedPreferences');
+        print('Failed to load meal plan: ${mealPlanResponse.reasonPhrase}');
       }
     } catch (e) {
       print('Error loading meal plan: $e');
     }
+  }
+
+  // Method to navigate to the previous week
+  void _previousWeek() {
+    setState(() {
+      selectedDate = selectedDate.subtract(const Duration(days: 7));
+      selectedWeek = _getWeekOfYear(selectedDate);
+      _loadMealPlan(); // Load the meal plan for the previous week
+    });
+  }
+
+  // Method to navigate to the next week
+  void _nextWeek() {
+    setState(() {
+      selectedDate = selectedDate.add(const Duration(days: 7));
+      selectedWeek = _getWeekOfYear(selectedDate);
+      _loadMealPlan(); // Load the meal plan for the next week
+    });
   }
 
   // Method to pick an image from the gallery and show preview modal
@@ -206,7 +230,7 @@ class _PlanScreenState extends State<PlanScreen> {
       print('Error uploading image: $e');
     }
   }
-
+  
   // Method to select a date using a calendar
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? pickedDate = await showDatePicker(
@@ -253,109 +277,135 @@ class _PlanScreenState extends State<PlanScreen> {
           ),
         ],
       ),
-      body: mealPlan.isNotEmpty
-          ? SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: ExpansionPanelList.radio(
-                children: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-                    .asMap()
-                    .entries
-                    .map((entry) {
-                  int index = entry.key;
-                  String day = entry.value;
-                  return ExpansionPanelRadio(
-                    value: index, // Unique identifier for each panel
-                    headerBuilder: (BuildContext context, bool isExpanded) {
-                      return ListTile(
-                        title: Text(
-                          day,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                      );
-                    },
-                    body: Column(
-                      children: [
-                        _buildMealCard(
-                          context: context,
-                          day: day,
-                          meal: 'BREAKFAST',
-                          isDone: isBreakfastDone,
-                          mainDish: mealPlan[day]?['breakfast']?['mainDish'] ?? 'N/A',
-                          vitamins: [mealPlan[day]?['breakfast']?['vitamins'] ?? ''],
-                          drinks: [mealPlan[day]?['breakfast']?['drinks'] ?? ''],
-                          imageFile: _breakfastImage,
-                          onUploadPhoto: () => _pickImage('BREAKFAST'),
-                          onTakePhoto: () => _takePhoto('BREAKFAST'),
-                          onStatusChanged: (status) {
-                            setState(() {
-                              isBreakfastDone = status;
-                            });
-                          },
-                        ),
-                        _buildMealCard(
-                          context: context,
-                          day: day,
-                          meal: 'LUNCH',
-                          isDone: isLunchDone,
-                          mainDish: mealPlan[day]?['lunch']?['mainDish'] ?? 'N/A',
-                          vitamins: [mealPlan[day]?['lunch']?['vitamins'] ?? ''],
-                          drinks: [mealPlan[day]?['lunch']?['drinks'] ?? ''],
-                          imageFile: _lunchImage,
-                          onUploadPhoto: () => _pickImage('LUNCH'),
-                          onTakePhoto: () => _takePhoto('LUNCH'),
-                          onStatusChanged: (status) {
-                            setState(() {
-                              isLunchDone = status;
-                            });
-                          },
-                        ),
-                        _buildMealCard(
-                          context: context,
-                          day: day,
-                          meal: 'SNACK',
-                          isDone: isSnackDone,
-                          mainDish: mealPlan[day]?['snack']?['mainDish'] ?? 'N/A',
-                          vitamins: [mealPlan[day]?['snack']?['vitamins'] ?? ''],
-                          drinks: [mealPlan[day]?['snack']?['drinks'] ?? ''],
-                          imageFile: _snackImage,
-                          onUploadPhoto: () => _pickImage('SNACK'),
-                          onTakePhoto: () => _takePhoto('SNACK'),
-                          onStatusChanged: (status) {
-                            setState(() {
-                              isSnackDone = status;
-                            });
-                          },
-                        ),
-                        _buildMealCard(
-                          context: context,
-                          day: day,
-                          meal: 'DINNER',
-                          isDone: isDinnerDone,
-                          mainDish: mealPlan[day]?['dinner']?['mainDish'] ?? 'N/A',
-                          vitamins: [mealPlan[day]?['dinner']?['vitamins'] ?? ''],
-                          drinks: [mealPlan[day]?['dinner']?['drinks'] ?? ''],
-                          imageFile: _dinnerImage,
-                          onUploadPhoto: () => _pickImage('DINNER'),
-                          onTakePhoto: () => _takePhoto('DINNER'),
-                          onStatusChanged: (status) {
-                            setState(() {
-                              isDinnerDone = status;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              ),
-            )
-          : const Center(
-              child: Text(
-                'No meal plans found for the current or previous week',
-                style: TextStyle(fontSize: 18, color: Colors.black),
-              ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton(
+                  onPressed: _previousWeek,
+                  child: const Text('Previous Week'),
+                ),
+                Text(
+                  selectedWeek, // Display the current week
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton(
+                  onPressed: _nextWeek,
+                  child: const Text('Next Week'),
+                ),
+              ],
             ),
+          ),
+          Expanded(
+            child: mealPlan.isNotEmpty
+                ? SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: ExpansionPanelList.radio(
+                      children: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                          .asMap()
+                          .entries
+                          .map((entry) {
+                        int index = entry.key;
+                        String day = entry.value;
+                        return ExpansionPanelRadio(
+                          value: index, // Unique identifier for each panel
+                          headerBuilder: (BuildContext context, bool isExpanded) {
+                            return ListTile(
+                              title: Text(
+                                day,
+                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              ),
+                            );
+                          },
+                          body: Column(
+                            children: [
+                              _buildMealCard(
+                                context: context,
+                                day: day,
+                                meal: 'BREAKFAST',
+                                isDone: isBreakfastDone,
+                                mainDish: mealPlan[day]?['breakfast']?['mainDish'] ?? 'N/A',
+                                vitamins: [mealPlan[day]?['breakfast']?['vitamins'] ?? ''],
+                                drinks: [mealPlan[day]?['breakfast']?['drinks'] ?? ''],
+                                imageFile: _breakfastImage,
+                                onUploadPhoto: () => _pickImage('BREAKFAST'),
+                                onTakePhoto: () => _takePhoto('BREAKFAST'),
+                                onStatusChanged: (status) {
+                                  setState(() {
+                                    isBreakfastDone = status;
+                                  });
+                                },
+                              ),
+                              _buildMealCard(
+                                context: context,
+                                day: day,
+                                meal: 'LUNCH',
+                                isDone: isLunchDone,
+                                mainDish: mealPlan[day]?['lunch']?['mainDish'] ?? 'N/A',
+                                vitamins: [mealPlan[day]?['lunch']?['vitamins'] ?? ''],
+                                drinks: [mealPlan[day]?['lunch']?['drinks'] ?? ''],
+                                imageFile: _lunchImage,
+                                onUploadPhoto: () => _pickImage('LUNCH'),
+                                onTakePhoto: () => _takePhoto('LUNCH'),
+                                onStatusChanged: (status) {
+                                  setState(() {
+                                    isLunchDone = status;
+                                  });
+                                },
+                              ),
+                              _buildMealCard(
+                                context: context,
+                                day: day,
+                                meal: 'SNACK',
+                                isDone: isSnackDone,
+                                mainDish: mealPlan[day]?['snack']?['mainDish'] ?? 'N/A',
+                                vitamins: [mealPlan[day]?['snack']?['vitamins'] ?? ''],
+                                drinks: [mealPlan[day]?['snack']?['drinks'] ?? ''],
+                                imageFile: _snackImage,
+                                onUploadPhoto: () => _pickImage('SNACK'),
+                                onTakePhoto: () => _takePhoto('SNACK'),
+                                onStatusChanged: (status) {
+                                  setState(() {
+                                    isSnackDone = status;
+                                  });
+                                },
+                              ),
+                              _buildMealCard(
+                                context: context,
+                                day: day,
+                                meal: 'DINNER',
+                                isDone: isDinnerDone,
+                                mainDish: mealPlan[day]?['dinner']?['mainDish'] ?? 'N/A',
+                                vitamins: [mealPlan[day]?['dinner']?['vitamins'] ?? ''],
+                                drinks: [mealPlan[day]?['dinner']?['drinks'] ?? ''],
+                                imageFile: _dinnerImage,
+                                onUploadPhoto: () => _pickImage('DINNER'),
+                                onTakePhoto: () => _takePhoto('DINNER'),
+                                onStatusChanged: (status) {
+                                  setState(() {
+                                    isDinnerDone = status;
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  )
+                : const Center(
+                    child: Text(
+                      'No meal plans found for the current or previous week',
+                      style: TextStyle(fontSize: 18, color: Colors.black),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

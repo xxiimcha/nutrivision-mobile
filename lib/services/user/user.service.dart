@@ -5,6 +5,7 @@ import 'package:sjq/models/client.model.dart';
 class UserService {
   final String baseUrl = 'http://localhost:5000/api';
 
+  // Method to create a patient record
   Future<void> createEntry(Client client) async {
     try {
       final response = await http.post(
@@ -24,6 +25,30 @@ class UserService {
       }
     } catch (e) {
       print('Error creating patient record: $e');
+      rethrow;
+    }
+  }
+
+  // Method to fetch patients by user ID
+  Future<List<Client>> getPatientsByUserId(String userId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/patients/$userId'),
+      );
+
+      if (response.statusCode == 200) {
+        Map<String, dynamic> data = jsonDecode(response.body);
+
+        // Access the 'patients' key
+        List<dynamic> patientsData = data['patients'];
+
+        return patientsData.map((json) => Client.fromJson(json)).toList();
+      } else {
+        print('Failed to fetch patients with status code: ${response.statusCode}');
+        throw Exception('Failed to fetch patients');
+      }
+    } catch (e) {
+      print('Error fetching patients: $e');
       rethrow;
     }
   }

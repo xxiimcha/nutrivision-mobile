@@ -40,20 +40,22 @@ router.post('/create', async (req, res) => {
   }
 });
 
-// Get patient record by userId
+// Get all patient records by userId
 router.get('/:userId', async (req, res) => {
   try {
       const userId = req.params.userId;
-      const patientRecord = await PatientRecord.findOne({ userId: userId });
+
+      // Use find to get all patient records for the user
+      const patientRecords = await PatientRecord.find({ userId: userId });
       
-      if (!patientRecord) {
-          return res.status(404).json({ message: 'Patient record not found' });
+      if (!patientRecords || patientRecords.length === 0) {
+          return res.status(404).json({ message: 'No patient records found for this user' });
       }
       
-      res.status(200).json(patientRecord);
+      res.status(200).json({ patients: patientRecords });
   } catch (error) {
-      console.error('Error fetching patient record:', error);
-      res.status(500).json({ message: 'Error fetching patient record', error });
+      console.error('Error fetching patient records:', error);
+      res.status(500).json({ message: 'Error fetching patient records', error });
   }
 });
 
