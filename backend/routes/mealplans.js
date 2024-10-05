@@ -18,12 +18,38 @@ router.post('/', async (req, res) => {
 router.get('/:patientId/:week', async (req, res) => {
   try {
     const { patientId, week } = req.params;
-    const mealPlan = await MealPlan.findOne({ patientId, week });
 
-    if (!mealPlan) {
-      return res.status(404).json({ message: 'Meal plan not found' });
+    // Validate and format the week (e.g., 'yyyy-MM-dd')
+    const weekStart = new Date(week);
+    if (isNaN(weekStart.getTime())) {
+      return res.status(400).json({ message: 'Invalid week format. Please use yyyy-MM-dd.' });
     }
 
+    // Find the meal plan for the specified patient and week
+    const mealPlan = await MealPlan.findOne({ patientId, week });
+
+    // If no meal plan found, return a default empty meal plan structure
+    if (!mealPlan) {
+      const emptyMealPlan = {
+        patientId,
+        week,
+        Monday: {
+          breakfast: { mainDish: 'N/A', drinks: 'N/A', vitamins: 'N/A', approved: false },
+          lunch: { mainDish: 'N/A', drinks: 'N/A', vitamins: 'N/A', approved: false },
+          dinner: { mainDish: 'N/A', drinks: 'N/A', vitamins: 'N/A', approved: false },
+        },
+        Tuesday: { /* similar structure */ },
+        Wednesday: { /* similar structure */ },
+        Thursday: { /* similar structure */ },
+        Friday: { /* similar structure */ },
+        Saturday: { /* similar structure */ },
+        Sunday: { /* similar structure */ }
+      };
+
+      return res.status(200).json(emptyMealPlan);  // Return the empty structure for the week
+    }
+
+    // If meal plan exists, return the found meal plan
     res.status(200).json(mealPlan);
   } catch (error) {
     console.error(`Error fetching meal plan for patient ${req.params.patientId}:`, error);

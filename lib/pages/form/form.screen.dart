@@ -87,13 +87,104 @@ class _FormScreenState extends State<FormScreen> {
 
     if (weight <= 0 || height <= 0 || ageInMonths == 0 || ageInMonths > 59) {
       setState(() {
-        nutritionStatus = 'Unknown';
+        nutritionStatus = 'Unknown'; // Set Unknown if values are invalid
       });
       return;
     }
 
-    // Calculate statuses
-    // (Include your weight and height calculation logic here as already implemented)
+    // Calculate Weight-for-Age
+    if (ageInMonths <= 1) {
+      if (weight < 2.5) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 2.5 && weight <= 4.5) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 3) {
+      if (weight < 4.5) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 4.5 && weight <= 6.5) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 6) {
+      if (weight < 6) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 6 && weight <= 8) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 12) {
+      if (weight < 7.5) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 7.5 && weight <= 10.5) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 24) {
+      if (weight < 9) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 9 && weight <= 12.5) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 36) {
+      if (weight < 11) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 11 && weight <= 15) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 48) {
+      if (weight < 12.5) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 12.5 && weight <= 18) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    } else if (ageInMonths <= 59) {
+      if (weight < 13) {
+        weightForAge = 'Underweight';
+      } else if (weight >= 13 && weight <= 20) {
+        weightForAge = 'Normal';
+      } else {
+        weightForAge = 'Overweight';
+      }
+    }
+
+    // Calculate Weight-for-Height (simple ratio as an example)
+    double weightToHeightRatio = weight / height;
+    if (weightToHeightRatio < 0.15) {
+      weightForHeight = 'Wasted';
+    } else if (weightToHeightRatio >= 0.15 && weightToHeightRatio <= 0.20) {
+      weightForHeight = 'Normal';
+    } else {
+      weightForHeight = 'Overweight';
+    }
+
+    // Final Nutrition Status: Malnourished, Normal, or Obese
+    if (weightForAge == 'Underweight' || weightForHeight == 'Wasted') {
+      nutritionStatus = 'Malnourished';
+    } else if (weightForAge == 'Overweight' || weightForHeight == 'Overweight') {
+      nutritionStatus = 'Obese';
+    } else {
+      nutritionStatus = 'Normal';
+    }
+
+    // Update UI
+    setState(() {
+      weightForAge = weightForAge;
+      heightForAge = heightForAge;
+      weightForHeight = weightForHeight;
+      nutritionStatus = nutritionStatus;
+    });
   }
 
   int _calculateAgeInMonths() {
@@ -142,33 +233,70 @@ class _FormScreenState extends State<FormScreen> {
         return;
       }
 
-      Client newClient = Client(
-        guardian: motherName,
-        address: address,
-        name: patientName,
-        dob: patientDob,
-        gender: patientSex,
-        height: patientHeight,
-        weight: patientWeight,
-        dateOfWeighing: actualDate,
-        weightForAge: weightForAge,
-        heightForAge: heightForAge,
-        weightForHeight: weightForHeight,
-        nutritionStatus: nutritionStatus,
-        ageInMonths: ageInMonths,
-        userId: userId, // Pass the userId to the client object
-      );
+      // Show the preview dialog
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Preview Details'),
+            content: SingleChildScrollView(
+              child: ListBody(
+                children: <Widget>[
+                  Text('Mother/Caregiver: $motherName'),
+                  Text('Child\'s Name: $patientName'),
+                  Text('Date of Birth: $patientDob'),
+                  Text('Gender: $patientSex'),
+                  Text('Height: $patientHeight cm'),
+                  Text('Weight: $patientWeight kg'),
+                  Text('Address: $address'),
+                  Text('Nutrition Status: $nutritionStatus'),
+                ],
+              ),
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close the dialog without saving
+                },
+              ),
+              TextButton(
+                child: const Text('Confirm'),
+                onPressed: () async {
+                  // Confirm and submit data
+                  Client newClient = Client(
+                    guardian: motherName,
+                    address: address,
+                    name: patientName,
+                    dob: patientDob,
+                    gender: patientSex,
+                    height: patientHeight,
+                    weight: patientWeight,
+                    dateOfWeighing: actualDate,
+                    weightForAge: weightForAge,
+                    heightForAge: heightForAge,
+                    weightForHeight: weightForHeight,
+                    nutritionStatus: nutritionStatus,
+                    ageInMonths: ageInMonths,
+                    userId: userId, // Pass the userId to the client object
+                  );
 
-      await userService.createEntry(newClient);
+                  await userService.createEntry(newClient);
+                  _clearFormFields();
+                  _loadPatients(); // Reload the patient list after saving a new entry
+                  setState(() {
+                    showForm = false; // Show the patient list after saving
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Client saved successfully!')),
+                  );
 
-      _clearFormFields();
-      _loadPatients(); // Reload the patient list after saving a new entry
-      setState(() {
-        showForm = false; // Show the patient list after saving
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Client saved successfully!')),
+                  Navigator.of(context).pop(); // Close the dialog after saving
+                },
+              ),
+            ],
+          );
+        },
       );
     }
   }

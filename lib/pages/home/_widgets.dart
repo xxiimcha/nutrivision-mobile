@@ -6,7 +6,7 @@ import 'package:sjq/themes/color.dart';
 const List<Widget> bodies = [
   EventScreen(),
   FormScreen(),
-  PlanScreen(),
+  PlanListScreen(),
   ChatPage(),
   ProfileScreen(),
 ];

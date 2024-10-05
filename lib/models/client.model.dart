@@ -1,4 +1,5 @@
 class Client {
+  String? id; // Changed _id to a public id field
   String? guardian;
   String? address;
   String? name;
@@ -15,6 +16,7 @@ class Client {
   String? userId;
 
   Client({
+    this.id, // Public id field
     this.guardian,
     this.address,
     this.name,
@@ -34,6 +36,7 @@ class Client {
   // Factory constructor to create a Client from JSON
   factory Client.fromJson(Map<String, dynamic> json) {
     return Client(
+      id: json['_id'], // Use id as public field
       guardian: json['guardian'],
       address: json['address'],
       name: json['name'],
@@ -54,6 +57,7 @@ class Client {
   // Method to convert a Client object to JSON
   Map<String, dynamic> toJson() {
     return {
+      '_id': id, // Add id to JSON object
       'guardian': guardian,
       'address': address,
       'name': name,
