@@ -1,319 +1,144 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-void main() {
-  runApp(
-    MaterialApp(
-      home: ChatPage(),
-    ),
-  );
-}
-
-class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
-
-  @override
-  _ChatPageState createState() => _ChatPageState();
-}
-
-class _ChatPageState extends State<ChatPage> {
-  List<MessageItem> items = [];
-  List<MessageItem> filteredItems = [];
-
-  // Fetch userId from SharedPreferences and print it to the console
-  Future<void> fetchUserId() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? userId = prefs.getString('userId');
-    if (userId != null) {
-      print('Logged-in User ID: $userId');
-    } else {
-      print('No User ID found in SharedPreferences.');
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchUsers();
-  }
-
-  Future<void> fetchUsers() async {
-    try {
-      final response = await http.get(Uri.parse('http://localhost:5000/api/users'));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> usersJson = json.decode(response.body);
-        setState(() {
-          items = usersJson.map((userJson) => MessageItem(userJson['name'], 'Start conversation')).toList();
-          filteredItems = items;
-        });
-      } else {
-        print('Failed to load users: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('Error fetching users: $e');
-    }
-  }
-
-  void filterList(String query) {
-    setState(() {
-      filteredItems = items
-          .where((item) => item.sender.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color.fromARGB(255, 255, 255, 255),
-              Color.fromARGB(255, 255, 255, 255),
-            ],
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                height: 40,
-                width: 700,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF96B0D7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 200,
-                      child: TextField(
-                        style: const TextStyle(color: Colors.white),
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search, color: Colors.white),
-                          hintText: 'Search',
-                          hintStyle: TextStyle(color: Colors.white, fontSize: 19),
-                          border: InputBorder.none,
-                        ),
-                        onChanged: filterList,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: filteredItems.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'No results found',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredItems.length,
-                        itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-                          return Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => ChatScreen(
-                                      userName: item.getSender(),
-                                    ),
-                                  ),
-                                );
-                              },
-                              splashColor: Colors.white.withOpacity(0.4),
-                              child: ListTile(
-                                title: item.buildTitle(context),
-                                subtitle: item.buildSubtitle(context),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-abstract class ListItem {
-  Widget buildTitle(BuildContext context);
-  Widget buildSubtitle(BuildContext context);
-}
-
-class MessageItem implements ListItem {
-  final String sender;
-  final String body;
-
-  MessageItem(this.sender, this.body);
-
-  String getSender() => sender;
-
-  @override
-  Widget buildTitle(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const CircleAvatar(
-          child: Icon(Icons.account_circle),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              sender,
-              style: const TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              body,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget buildSubtitle(BuildContext context) => const SizedBox.shrink();
-}
+import 'package:sjq/services/chat/chat.service.dart'; // Import your chat service
+import 'package:sjq/models/message.model.dart'; // Import your message model
 
 class ChatScreen extends StatefulWidget {
-  final String userName;
+  final String sender;
+  final String loggedInUserId;
 
-  const ChatScreen({super.key, required this.userName});
+  const ChatScreen({Key? key, required this.sender, required this.loggedInUserId}) : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _messageController = TextEditingController();
-  List<ChatMessage> chatMessages = [];
+  ChatService chatService = ChatService();
+  Future<List<Message>> messages = Future.value([]);
+  TextEditingController messageController = TextEditingController(); // Controller for the message input
 
-  void _sendMessage() {
-    String message = _messageController.text;
+  @override
+  void initState() {
+    super.initState();
+    _loadChatMessages(); // Load chat messages between the sender and the logged-in user
+  }
+
+  // Fetch messages between the sender and logged-in user (both ways)
+  Future<void> _loadChatMessages() async {
     setState(() {
-      chatMessages.add(ChatMessage(
-        sender: widget.userName,
-        message: message,
-        isMe: true,
-      ));
+      messages = chatService.getMessagesBetweenUsers(widget.loggedInUserId, widget.sender);
     });
-    _messageController.clear();
+  }
+
+  // Function to send a message
+  Future<void> _sendMessage() async {
+    if (messageController.text.trim().isEmpty) {
+      return; // Do not send if the message is empty
+    }
+
+    try {
+      // Call the sendMessage method in ChatService
+      await chatService.sendMessage(widget.loggedInUserId, widget.sender, messageController.text);
+
+      // Clear the input field
+      messageController.clear();
+
+      // Reload chat messages after sending
+      _loadChatMessages();
+    } catch (e) {
+      print('Error sending message: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFF96B0D7),
         title: Row(
           children: [
-            const CircleAvatar(
-              child: Icon(Icons.account_circle),
+            CircleAvatar(
+              backgroundColor: Colors.blueAccent,
+              child: Icon(Icons.person, color: Colors.white), // Placeholder for user avatar
             ),
-            const SizedBox(width: 8),
-            Text(widget.userName),
+            SizedBox(width: 10),
+            Text(widget.sender), // Display the name of the selected contact
           ],
         ),
+        backgroundColor: Colors.blue,
+        // Removed actions (camera and phone icons)
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                reverse: true,
-                itemCount: chatMessages.length,
-                itemBuilder: (context, index) {
-                  final reversedIndex = chatMessages.length - 1 - index;
-                  final message = chatMessages[reversedIndex];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                    child: Align(
-                      alignment: message.isMe
-                          ? Alignment.centerRight
-                          : Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        decoration: BoxDecoration(
-                          color: message.isMe
-                              ? const Color.fromARGB(255, 202, 202, 202)
-                              : const Color.fromARGB(255, 158, 158, 158),
-                          borderRadius: BorderRadius.circular(12.0),
+      body: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<List<Message>>(
+              future: messages, // Fetch the chat messages
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return const Center(child: Text('Error loading messages'));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('No messages found'));
+                } else {
+                  final chatMessages = snapshot.data!;
+                  return ListView.builder(
+                    itemCount: chatMessages.length,
+                    itemBuilder: (context, index) {
+                      final message = chatMessages[index];
+                      bool isSentByLoggedInUser = message.sender == widget.loggedInUserId;
+
+                      return Align(
+                        alignment: isSentByLoggedInUser ? Alignment.centerRight : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isSentByLoggedInUser ? Colors.greenAccent : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            message.text,
+                            style: TextStyle(
+                              color: isSentByLoggedInUser ? Colors.white : Colors.black,
+                            ),
+                          ),
                         ),
-                        child: Text(
-                          message.message,
-                          style: const TextStyle(
-                              color: Color.fromARGB(255, 0, 0, 0)),
-                        ),
-                      ),
-                    ),
+                      );
+                    },
                   );
-                },
-              ),
+                }
+              },
             ),
-            Row(
+          ),
+          // Input field and send button
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
+                    controller: messageController,
+                    decoration: InputDecoration(
                       hintText: 'Type a message...',
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
+                  icon: Icon(Icons.send),
+                  color: Colors.blue,
+                  onPressed: _sendMessage, // Call the send message function when the send button is pressed
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
-
-class ChatMessage {
-  final String sender;
-  final String message;
-  final bool isMe;
-
-  ChatMessage({
-    required this.sender,
-    required this.message,
-    required this.isMe,
-  });
 }

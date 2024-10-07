@@ -14,13 +14,13 @@ class Message {
   // Factory method to create a Message from a JSON map
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
-      sender: json['sender'],
-      receiver: json['receiver'],
-      text: json['text'],
-      // Handle string or DateTime objects in the 'timestamp' field
+      sender: json['sender'] ?? '', // Fallback to an empty string if null
+      receiver: json['receiver'] ?? '', // Fallback to an empty string if null
+      text: json['text'] ?? '', // Fallback to an empty string if null
+      // Safely parse the timestamp or use a fallback
       timestamp: json['timestamp'] is String
-          ? DateTime.parse(json['timestamp'])
-          : json['timestamp'] as DateTime,
+          ? DateTime.tryParse(json['timestamp']) ?? DateTime.now()
+          : DateTime.now(),
     );
   }
 
@@ -30,7 +30,7 @@ class Message {
       'sender': sender,
       'receiver': receiver,
       'text': text,
-      'timestamp': timestamp.toIso8601String(), // Ensure to use a DateTime object here
+      'timestamp': timestamp.toIso8601String(), // Convert DateTime to ISO string format
     };
   }
 }
