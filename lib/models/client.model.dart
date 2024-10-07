@@ -14,6 +14,7 @@ class Client {
   String? nutritionStatus;
   int? ageInMonths;
   String? userId;
+  String? goalWeight; // New field to store goal weight
 
   Client({
     this.id, // Public id field
@@ -31,6 +32,7 @@ class Client {
     this.nutritionStatus,
     this.ageInMonths,
     this.userId,
+    this.goalWeight, // Initialize the goal weight
   });
 
   // Factory constructor to create a Client from JSON
@@ -51,6 +53,7 @@ class Client {
       nutritionStatus: json['nutritionStatus'],
       ageInMonths: json['ageInMonths'],
       userId: json['userId'],
+      goalWeight: json['goalWeight'], // Include goal weight from JSON
     );
   }
 
@@ -72,6 +75,7 @@ class Client {
       'nutritionStatus': nutritionStatus,
       'ageInMonths': ageInMonths,
       'userId': userId,
+      'goalWeight': goalWeight, // Add goal weight to JSON
     };
   }
 }

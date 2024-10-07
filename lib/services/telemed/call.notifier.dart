@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class CallNotifier extends StatefulWidget {
-  final String userId;
+  final String userId; // ID of the logged-in user
 
   CallNotifier({required this.userId});
 
@@ -131,6 +131,11 @@ class _CallNotifierState extends State<CallNotifier> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(); // Return an empty container since this widget won't display anything
+    return Scaffold(
+      appBar: AppBar(title: Text('Call Notifier')),
+      body: Center(
+        child: Text('Waiting for incoming calls...'),
+      ),
+    );
   }
 }

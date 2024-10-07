@@ -17,11 +17,14 @@ dependencies:
   table_calendar: ^3.0.9
   http: ^1.2.1
   shared_preferences: ^2.0.15
-  socket_io_client: ^2.0.0 
+  socket_io_client: ^2.0.0
+  flutter_local_notifications: ^9.0.0
   # firebase_core: ^3.6.0
   # firebase_storage: ^12.3.2
   # firebase_auth: ^5.3.1
   flutter_dotenv: ^5.0.2
+  flutter_inappwebview: ^5.3.2
+  webview_flutter: ^4.0.1
   
 dev_dependencies:
   flutter_test:

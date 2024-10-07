@@ -14,8 +14,11 @@ class FormScreen extends StatefulWidget {
 }
 
 class _FormScreenState extends State<FormScreen> {
+
   UserService userService = UserService();
-  TextEditingController addressController = TextEditingController();
+  TextEditingController houseNumberController = TextEditingController();
+  TextEditingController streetController = TextEditingController();
+  TextEditingController cityController = TextEditingController();
   TextEditingController motherNameController = TextEditingController();
   TextEditingController patientNameController = TextEditingController();
   TextEditingController patientDobController = TextEditingController();
@@ -28,10 +31,43 @@ class _FormScreenState extends State<FormScreen> {
   String heightForAge = 'Normal';
   String weightForHeight = 'Normal';
   String nutritionStatus = 'Normal';
+  String selectedZone = ''; // Zone selection
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   List<Client> patients = []; // To store the list of patients
   bool showForm = false; // To toggle between the form and the list of patients
+
+  final List<String> zones = [
+    'Zone 1 - Kalayaan',
+    'Zone 1 - Santol',
+    'Zone 1 - Half Acacia',
+    'Zone 1 - Half Narra',
+    'Zone 2 - Half Acacia',
+    'Zone 2 - Molave',
+    'Zone 3 - Ilang-ilang',
+    'Zone 3 - Jasmin',
+    'Zone 3 - Camia',
+    'Zone 3 - Guiho',
+    'Zone 3 - Lower Guiho',
+    'Zone 3 - Half Sampaguita',
+    'Zone 3 - Half Acacia',
+    'Zone 4 - Manga',
+    'Zone 4 - Chico',
+    'Zone 4 - Kamias',
+    'Zone 4 - Bayabas',
+    'Zone 4 - Half Banaba',
+    'Zone 4 - Half Sampaguita',
+    'Zone 5 - Half Manga',
+    'Zone 5 - Half Tangile',
+    'Zone 5 - Half Ipil',
+    'Zone 5 - Half Acacia',
+    'Zone 5 - Half Banaba',
+    'Zone 6 - Half Narra',
+    'Zone 6 - Half Tangile',
+    'Zone 6 - Mabolo',
+    'Zone 7 - Bliss',
+    'Zone 8 - Macda'
+  ];
 
   @override
   void initState() {
@@ -50,14 +86,18 @@ class _FormScreenState extends State<FormScreen> {
   }
 
   void _clearFormFields() {
-    addressController.clear();
+    houseNumberController.clear(); // Clear house number
+    streetController.clear(); // Clear street
+    cityController.clear(); // Clear city
     motherNameController.clear();
     patientNameController.clear();
     patientDobController.clear();
     heightController.clear();
     weightController.clear();
     dateOfWeighingController.clear();
+    
     setState(() {
+      selectedZone = ''; // Reset zone selection
       weightForAge = 'Normal';
       heightForAge = 'Normal';
       weightForHeight = 'Normal';
@@ -206,6 +246,29 @@ class _FormScreenState extends State<FormScreen> {
     }
   }
 
+  double _calculateGoalWeight(int ageInMonths, double height) {
+    // Define the weight ranges for different age groups
+    if (ageInMonths <= 1) {
+      return (2.5 + 4.5) / 2; // Average weight for birth to 1 month
+    } else if (ageInMonths <= 3) {
+      return (4.5 + 6.5) / 2; // Average weight for 1-3 months
+    } else if (ageInMonths <= 6) {
+      return (6 + 8) / 2; // Average weight for 3-6 months
+    } else if (ageInMonths <= 12) {
+      return (7.5 + 10.5) / 2; // Average weight for 6-12 months
+    } else if (ageInMonths <= 24) {
+      return (9 + 12.5) / 2; // Average weight for 1-2 years (12-24 months)
+    } else if (ageInMonths <= 36) {
+      return (11 + 15) / 2; // Average weight for 2-3 years (24-36 months)
+    } else if (ageInMonths <= 48) {
+      return (12.5 + 18) / 2; // Average weight for 3-4 years (36-48 months)
+    } else if (ageInMonths <= 59) {
+      return (13 + 20) / 2; // Average weight for 4-5 years (48-59 months)
+    } else {
+      return 0; // If age is outside valid range
+    }
+  }
+
   Future<void> saveButtonPressed(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
       int ageInMonths = _calculateAgeInMonths();
@@ -216,7 +279,9 @@ class _FormScreenState extends State<FormScreen> {
         return;
       }
 
-      String address = addressController.text;
+      String houseNumber = houseNumberController.text;
+      String street = streetController.text;
+      String city = cityController.text;
       String motherName = motherNameController.text;
       String patientName = patientNameController.text;
       String patientDob = patientDobController.text;
@@ -233,70 +298,39 @@ class _FormScreenState extends State<FormScreen> {
         return;
       }
 
-      // Show the preview dialog
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Preview Details'),
-            content: SingleChildScrollView(
-              child: ListBody(
-                children: <Widget>[
-                  Text('Mother/Caregiver: $motherName'),
-                  Text('Child\'s Name: $patientName'),
-                  Text('Date of Birth: $patientDob'),
-                  Text('Gender: $patientSex'),
-                  Text('Height: $patientHeight cm'),
-                  Text('Weight: $patientWeight kg'),
-                  Text('Address: $address'),
-                  Text('Nutrition Status: $nutritionStatus'),
-                ],
-              ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () {
-                  Navigator.of(context).pop(); // Close the dialog without saving
-                },
-              ),
-              TextButton(
-                child: const Text('Confirm'),
-                onPressed: () async {
-                  // Confirm and submit data
-                  Client newClient = Client(
-                    guardian: motherName,
-                    address: address,
-                    name: patientName,
-                    dob: patientDob,
-                    gender: patientSex,
-                    height: patientHeight,
-                    weight: patientWeight,
-                    dateOfWeighing: actualDate,
-                    weightForAge: weightForAge,
-                    heightForAge: heightForAge,
-                    weightForHeight: weightForHeight,
-                    nutritionStatus: nutritionStatus,
-                    ageInMonths: ageInMonths,
-                    userId: userId, // Pass the userId to the client object
-                  );
+      // Calculate the full address by concatenating the input fields
+      String fullAddress = "$houseNumber $street, $city, $selectedZone";
 
-                  await userService.createEntry(newClient);
-                  _clearFormFields();
-                  _loadPatients(); // Reload the patient list after saving a new entry
-                  setState(() {
-                    showForm = false; // Show the patient list after saving
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Client saved successfully!')),
-                  );
+      // Calculate the goal weight based on age and height
+      double goalWeight = _calculateGoalWeight(ageInMonths, double.tryParse(heightController.text) ?? 0);
 
-                  Navigator.of(context).pop(); // Close the dialog after saving
-                },
-              ),
-            ],
-          );
-        },
+      // Confirm and submit data
+      Client newClient = Client(
+        guardian: motherName,
+        address: fullAddress, // Use the concatenated address
+        name: patientName,
+        dob: patientDob,
+        gender: patientSex,
+        height: patientHeight,
+        weight: patientWeight,
+        dateOfWeighing: actualDate,
+        weightForAge: weightForAge,
+        heightForAge: heightForAge,
+        weightForHeight: weightForHeight,
+        nutritionStatus: nutritionStatus,
+        ageInMonths: ageInMonths,
+        userId: userId, // Pass the userId to the client object
+        goalWeight: goalWeight.toStringAsFixed(2), // Store the calculated goal weight
+      );
+
+      await userService.createEntry(newClient);
+      _clearFormFields();
+      _loadPatients(); // Reload the patient list after saving a new entry
+      setState(() {
+        showForm = false; // Show the patient list after saving
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Client saved successfully!')),
       );
     }
   }
@@ -423,19 +457,19 @@ class _FormScreenState extends State<FormScreen> {
             const Text("Please fill out this form with the required details.", style: headingS),
             const SizedBox(height: 15),
 
-            // Address Field
+            // House Number Field
             TextFormField(
-              controller: addressController,
+              controller: houseNumberController,
               textCapitalization: TextCapitalization.words, // Capitalize first letter of each word
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'Please enter the address';
+                  return 'Please enter the house number';
                 }
                 return null;
               },
               decoration: const InputDecoration(
                 hintStyle: paragraphS,
-                hintText: 'ADDRESS',
+                hintText: 'HOUSE NUMBER',
                 fillColor: Colors.white,
                 filled: true,
                 contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
@@ -446,7 +480,78 @@ class _FormScreenState extends State<FormScreen> {
             ),
             const SizedBox(height: 15),
 
-            // Mother/Caregiver Name Field
+            // Street Field
+            TextFormField(
+              controller: streetController,
+              textCapitalization: TextCapitalization.words, // Capitalize first letter of each word
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter the street';
+                }
+                return null;
+              },
+              decoration: const InputDecoration(
+                hintStyle: paragraphS,
+                hintText: 'STREET',
+                fillColor: Colors.white,
+                filled: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            // City Field
+            TextFormField(
+              controller: cityController,
+              textCapitalization: TextCapitalization.words, // Capitalize first letter of each word
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter the city';
+                }
+                return null;
+              },
+              decoration: const InputDecoration(
+                hintStyle: paragraphS,
+                hintText: 'CITY',
+                fillColor: Colors.white,
+                filled: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
+
+            // Zone Dropdown Field
+            DropdownButtonFormField<String>(
+              value: selectedZone.isEmpty ? null : selectedZone,
+              onChanged: (value) {
+                setState(() {
+                  selectedZone = value!;
+                });
+              },
+              items: zones.map((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+              decoration: const InputDecoration(
+                hintStyle: paragraphS,
+                hintText: 'SELECT ZONE',
+                fillColor: Colors.white,
+                filled: true,
+                contentPadding: EdgeInsets.symmetric(vertical: 5, horizontal: 15),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(20)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
             TextFormField(
               controller: motherNameController,
               textCapitalization: TextCapitalization.words, // Capitalize first letter of each word

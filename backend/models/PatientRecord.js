@@ -15,7 +15,8 @@ const patientRecordSchema = new mongoose.Schema({
   heightForAge: String,
   weightForHeight: String,
   nutritionStatus: String,
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'Users', required: true } // Remove unique constraint here
+  goalWeight: String, // Added field for goal weight
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'Users', required: true } // Removed unique constraint
 });
 
 module.exports = mongoose.model('PatientRecord', patientRecordSchema);
