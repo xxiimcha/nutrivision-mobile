@@ -3,24 +3,23 @@ class Message {
   final String receiver;
   final String text;
   final DateTime timestamp;
+  String? senderName; // Add a nullable field for the sender's name
 
   Message({
     required this.sender,
     required this.receiver,
     required this.text,
     required this.timestamp,
+    this.senderName, // Add the senderName in the constructor
   });
 
-  // Factory method to create a Message from a JSON map
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
-      sender: json['sender'] ?? '', // Fallback to an empty string if null
-      receiver: json['receiver'] ?? '', // Fallback to an empty string if null
-      text: json['text'] ?? '', // Fallback to an empty string if null
-      // Safely parse the timestamp or use a fallback
-      timestamp: json['timestamp'] is String
-          ? DateTime.tryParse(json['timestamp']) ?? DateTime.now()
-          : DateTime.now(),
+      sender: json['sender'],
+      receiver: json['receiver'],
+      text: json['text'],
+      timestamp: DateTime.parse(json['timestamp']),
+      senderName: json['senderName'], // Make sure this matches the field you expect
     );
   }
 
@@ -31,6 +30,7 @@ class Message {
       'receiver': receiver,
       'text': text,
       'timestamp': timestamp.toIso8601String(), // Convert DateTime to ISO string format
+      'senderName': senderName, // Convert DateTime to ISO string format
     };
   }
 }

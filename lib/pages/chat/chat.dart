@@ -5,8 +5,14 @@ import 'package:sjq/models/message.model.dart'; // Import your message model
 class ChatScreen extends StatefulWidget {
   final String sender;
   final String loggedInUserId;
+  final String senderName; // Add senderName parameter
 
-  const ChatScreen({Key? key, required this.sender, required this.loggedInUserId}) : super(key: key);
+  const ChatScreen({
+    Key? key, 
+    required this.sender, 
+    required this.loggedInUserId, 
+    required this.senderName // Ensure senderName is required
+  }) : super(key: key);
 
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -61,11 +67,10 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Icon(Icons.person, color: Colors.white), // Placeholder for user avatar
             ),
             SizedBox(width: 10),
-            Text(widget.sender), // Display the name of the selected contact
+            Text(widget.senderName), // Display the sender's name passed from the previous screen
           ],
         ),
         backgroundColor: Colors.blue,
-        // Removed actions (camera and phone icons)
       ),
       body: Column(
         children: [

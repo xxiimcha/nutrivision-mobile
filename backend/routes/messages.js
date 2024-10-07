@@ -3,6 +3,23 @@ const router = express.Router();
 const Message = require('../models/Message');
 const Admin = require('../models/Admin'); // Import the Admin model
 
+// Fetch admin details by ID
+router.get('/admin/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const admin = await Admin.findById(userId).lean();
+
+    if (admin) {
+      res.status(200).json({ name: `${admin.firstName} ${admin.lastName}` });
+    } else {
+      res.status(404).json({ error: 'Admin not found' });
+    }
+  } catch (error) {
+    console.error(`Failed to fetch sender name for ${req.params.userId}: ${error}`);
+    res.status(500).json({ error: 'Failed to fetch sender name' });
+  }
+});
+
 // Fetch messages where the user is either the sender or the receiver
 router.get('/:userId', async (req, res) => {
   try {

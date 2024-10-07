@@ -5,12 +5,20 @@ import 'package:sjq/models/message.model.dart';
 class ChatService {
   Future<List<Message>> getMessagesForUser(String userId) async {
     try {
+      // Fetch messages for the logged-in user
       final response = await http.get(Uri.parse('http://localhost:5000/api/messages/$userId'));
 
       if (response.statusCode == 200) {
         List<dynamic> jsonResponse = json.decode(response.body);
         if (jsonResponse is List) {
-          return jsonResponse.map((text) => Message.fromJson(text)).toList();
+          List<Message> messages = jsonResponse.map((text) => Message.fromJson(text)).toList();
+          
+          // Fetch sender names for each message
+          for (var message in messages) {
+            message.senderName = await getSenderName(message.sender);
+          }
+
+          return messages;
         } else {
           throw Exception('Invalid response format');
         }
@@ -20,6 +28,24 @@ class ChatService {
     } catch (e) {
       print('Error loading messages: $e');
       rethrow;
+    }
+  }
+
+  // New method to fetch the sender's name from the backend
+  Future<String> getSenderName(String userId) async {
+    try {
+      final response = await http.get(Uri.parse('http://localhost:5000/api/messages/admin/$userId'));
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        return jsonResponse['name'];
+      } else {
+        print('Failed to fetch sender name for $userId');
+        return 'Unknown'; // Return 'Unknown' if the user is not found
+      }
+    } catch (e) {
+      print('Error fetching sender name for $userId: $e');
+      return 'Unknown';
     }
   }
 

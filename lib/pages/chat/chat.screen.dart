@@ -129,18 +129,19 @@ class _ChatPageState extends State<ChatPage> {
                                 child: Icon(Icons.person, color: Colors.white), // Placeholder for user avatar
                               ),
                               title: Text(
-                                sender, // Display the sender as contact name
+                                lastMessage.senderName ?? sender, // Display the sender's name if available
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               subtitle: const Text('Start conversation'), // Display the subtitle as "Start conversation"
                               onTap: () {
-                                // Navigate to Chat.dart and pass the sender and loggedInUserId
+                                // Pass the sender's name to the chat screen
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) => ChatScreen(
-                                      sender: sender, // Pass sender to Chat.dart
+                                      sender: sender, // Pass the sender ID to ChatScreen
                                       loggedInUserId: loggedInUserId!, // Pass the logged-in user ID
+                                      senderName: lastMessage.senderName ?? sender, // Pass the sender name, fallback to sender ID if not available
                                     ),
                                   ),
                                 );
