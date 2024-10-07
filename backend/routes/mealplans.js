@@ -14,45 +14,37 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get meal plan for a specific patient by week
 router.get('/:patientId/:week', async (req, res) => {
   try {
-    const { patientId, week } = req.params;
+    const { patientId, week } = req.params;  // Extract patientId from req.params
 
-    // Validate and format the week (e.g., 'yyyy-MM-dd')
-    const weekStart = new Date(week);
-    if (isNaN(weekStart.getTime())) {
-      return res.status(400).json({ message: 'Invalid week format. Please use yyyy-MM-dd.' });
+    // Ensure patientId and week are valid
+    if (!patientId) {
+      return res.status(400).json({ message: 'Patient ID is required' });
     }
 
-    // Find the meal plan for the specified patient and week
+    if (!week) {
+      return res.status(400).json({ message: 'Week is required' });
+    }
+
     const mealPlan = await MealPlan.findOne({ patientId, week });
 
-    // If no meal plan found, return a default empty meal plan structure
     if (!mealPlan) {
+      // Return a default empty meal plan if not found
       const emptyMealPlan = {
-        patientId,
+        patientId, // Make sure to pass the patientId here
         week,
-        Monday: {
-          breakfast: { mainDish: 'N/A', drinks: 'N/A', vitamins: 'N/A', approved: false },
-          lunch: { mainDish: 'N/A', drinks: 'N/A', vitamins: 'N/A', approved: false },
-          dinner: { mainDish: 'N/A', drinks: 'N/A', vitamins: 'N/A', approved: false },
-        },
-        Tuesday: { /* similar structure */ },
-        Wednesday: { /* similar structure */ },
-        Thursday: { /* similar structure */ },
-        Friday: { /* similar structure */ },
-        Saturday: { /* similar structure */ },
-        Sunday: { /* similar structure */ }
+        Monday: { /* default structure */ },
+        Tuesday: { /* default structure */ },
+        // Rest of the days
       };
 
-      return res.status(200).json(emptyMealPlan);  // Return the empty structure for the week
+      return res.status(200).json(emptyMealPlan);
     }
 
-    // If meal plan exists, return the found meal plan
     res.status(200).json(mealPlan);
   } catch (error) {
-    console.error(`Error fetching meal plan for patient ${req.params.patientId}:`, error);
+    console.error(`Error fetching meal plan for patient ${patientId}:`, error);
     res.status(500).json({ message: 'Error fetching meal plan', error });
   }
 });

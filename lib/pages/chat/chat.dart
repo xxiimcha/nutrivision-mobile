@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -21,6 +22,17 @@ class _ChatPageState extends State<ChatPage> {
   List<MessageItem> items = [];
   List<MessageItem> filteredItems = [];
 
+  // Fetch userId from SharedPreferences and print it to the console
+  Future<void> fetchUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? userId = prefs.getString('userId');
+    if (userId != null) {
+      print('Logged-in User ID: $userId');
+    } else {
+      print('No User ID found in SharedPreferences.');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -28,16 +40,20 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Future<void> fetchUsers() async {
-    final response = await http.get(Uri.parse('http://localhost:5000/api/users'));
+    try {
+      final response = await http.get(Uri.parse('http://localhost:5000/api/users'));
 
-    if (response.statusCode == 200) {
-      final List<dynamic> usersJson = json.decode(response.body);
-      setState(() {
-        items = usersJson.map((userJson) => MessageItem(userJson['name'], 'Start conversation')).toList();
-        filteredItems = items;
-      });
-    } else {
-      print('Failed to load users');
+      if (response.statusCode == 200) {
+        final List<dynamic> usersJson = json.decode(response.body);
+        setState(() {
+          items = usersJson.map((userJson) => MessageItem(userJson['name'], 'Start conversation')).toList();
+          filteredItems = items;
+        });
+      } else {
+        print('Failed to load users: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching users: $e');
     }
   }
 

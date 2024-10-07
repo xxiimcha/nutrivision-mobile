@@ -16,12 +16,43 @@ class _ChangePasswordState extends State<ChangePassword> {
   final TextEditingController currentPasswordController = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
+
   bool showCurrentPassword = false;
   bool showNewPassword = false;
   bool showConfirmPassword = false;
 
+  bool hasUpperLowerCase = false;
+  bool hasNumberOrSymbol = false;
+  bool isLongEnough = false;
+  bool noSpacesOrPipes = true;
+  bool passwordsMatch = false;
+
+  @override
+  void initState() {
+    super.initState();
+    newPasswordController.addListener(_validatePassword);
+    confirmPasswordController.addListener(_validatePassword);
+  }
+
+  void _validatePassword() {
+    setState(() {
+      final password = newPasswordController.text;
+      hasUpperLowerCase = password.contains(RegExp(r'^(?=.*[a-z])(?=.*[A-Z])'));
+      hasNumberOrSymbol = password.contains(RegExp(r'(?=.*\d)|(?=.*[@$!%*#?&])'));
+      isLongEnough = password.length >= 8;
+      noSpacesOrPipes = !password.contains(' ') && !password.contains('|');
+      passwordsMatch = password == confirmPasswordController.text;
+    });
+  }
+
+  bool isValidPassword(String password) {
+    return hasUpperLowerCase &&
+        hasNumberOrSymbol &&
+        isLongEnough &&
+        noSpacesOrPipes;
+  }
+
   void saveChanges(BuildContext context) async {
-    // Get the userId from SharedPreferences
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? userId = prefs.getString('userId');
 
@@ -34,7 +65,6 @@ class _ChangePasswordState extends State<ChangePassword> {
       return;
     }
 
-    // Validate input
     if (currentPasswordController.text.isEmpty ||
         newPasswordController.text.isEmpty ||
         confirmPasswordController.text.isEmpty) {
@@ -46,7 +76,7 @@ class _ChangePasswordState extends State<ChangePassword> {
       return;
     }
 
-    if (newPasswordController.text != confirmPasswordController.text) {
+    if (!passwordsMatch) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('New password and confirmation do not match.'),
@@ -55,13 +85,17 @@ class _ChangePasswordState extends State<ChangePassword> {
       return;
     }
 
+    if (!isValidPassword(newPasswordController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Password must include at least 8 characters, include one uppercase letter, one number, and one special character.'),
+        ),
+      );
+      return;
+    }
+
     try {
-      // Log request details
-      print('Attempting to change password for user ID: $userId');
-      print('Current Password: ${currentPasswordController.text}');
-      print('New Password: ${newPasswordController.text}');
-      
-      // Prepare API request
       final response = await http.put(
         Uri.parse('http://localhost:5000/api/users/$userId/change-password'),
         headers: {'Content-Type': 'application/json'},
@@ -71,11 +105,6 @@ class _ChangePasswordState extends State<ChangePassword> {
         }),
       );
 
-      // Log response details
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
-      // Handle response
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -87,7 +116,6 @@ class _ChangePasswordState extends State<ChangePassword> {
           AppNavigator().pop(context);
         });
       } else if (response.statusCode == 400) {
-        // Assuming the backend returns 400 for incorrect current password
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Incorrect current password.'),
@@ -101,14 +129,44 @@ class _ChangePasswordState extends State<ChangePassword> {
         );
       }
     } catch (e) {
-      // Log any errors
-      print('Error during password change: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: $e'),
         ),
       );
     }
+  }
+
+  Widget _buildPasswordChecklist() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildChecklistItem(
+            'Include lower and upper characters', hasUpperLowerCase),
+        _buildChecklistItem('Include at least 1 number or symbol', hasNumberOrSymbol),
+        _buildChecklistItem('Be at least 8 characters long', isLongEnough),
+        _buildChecklistItem('Cannot contain spaces or "|" symbol', noSpacesOrPipes),
+        _buildChecklistItem('Passwords match', passwordsMatch),
+      ],
+    );
+  }
+
+  Widget _buildChecklistItem(String text, bool conditionMet) {
+    return Row(
+      children: [
+        Icon(
+          conditionMet ? Icons.check : Icons.close,
+          color: conditionMet ? Colors.green : Colors.red,
+        ),
+        const SizedBox(width: 10),
+        Text(
+          text,
+          style: TextStyle(
+            color: conditionMet ? Colors.green : Colors.red,
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -164,8 +222,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                           fillColor: Colors.white,
                           filled: true,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 15),
+                              vertical: 5, horizontal: 15),
                           border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(
                               Radius.circular(20),
@@ -193,8 +250,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                           fillColor: Colors.white,
                           filled: true,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 15),
+                              vertical: 5, horizontal: 15),
                           border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(
                               Radius.circular(20),
@@ -222,8 +278,7 @@ class _ChangePasswordState extends State<ChangePassword> {
                           fillColor: Colors.white,
                           filled: true,
                           contentPadding: const EdgeInsets.symmetric(
-                              vertical: 5,
-                              horizontal: 15),
+                              vertical: 5, horizontal: 15),
                           border: const OutlineInputBorder(
                             borderRadius: BorderRadius.all(
                               Radius.circular(20),
@@ -231,17 +286,17 @@ class _ChangePasswordState extends State<ChangePassword> {
                           ),
                         ),
                       ),
-                      const SizedBox(
-                        height: 30,
-                      ),
+                      const SizedBox(height: 30),
+                      _buildPasswordChecklist(),
+                      const SizedBox(height: 20),
                       Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const SizedBox(width: double.infinity),
                           ElevatedButton(
-                            onPressed: () {
+                            onPressed: _canSave() ? () {
                               saveChanges(context);
-                            },
+                            } : null,
                             style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green),
                             child: const Padding(
@@ -264,5 +319,13 @@ class _ChangePasswordState extends State<ChangePassword> {
         ),
       ),
     );
+  }
+
+  bool _canSave() {
+    return hasUpperLowerCase &&
+        hasNumberOrSymbol &&
+        isLongEnough &&
+        noSpacesOrPipes &&
+        passwordsMatch;
   }
 }

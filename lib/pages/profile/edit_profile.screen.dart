@@ -18,11 +18,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
-  final TextEditingController ageController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController contactController = TextEditingController();
 
   String _fullName = ''; // Variable to hold the combined firstName and lastName
+
+  // Add variables to hold the initial data for comparison
+  String _initialFirstName = '';
+  String _initialLastName = '';
+  String _initialEmail = '';
+  String _initialContact = '';
+  String _initialUsername = '';
 
   @override
   void initState() {
@@ -52,9 +58,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             fullNameController.text = userData['username'] ?? '';
             firstNameController.text = userData['firstName'] ?? '';
             lastNameController.text = userData['lastName'] ?? '';
-            ageController.text = userData['age'] ?? '';
             emailController.text = userData['email'] ?? '';
             contactController.text = userData['contact'] ?? '';
+
+            // Store the initial values for comparison later
+            _initialFirstName = userData['firstName'] ?? '';
+            _initialLastName = userData['lastName'] ?? '';
+            _initialEmail = userData['email'] ?? '';
+            _initialContact = userData['contact'] ?? '';
+            _initialUsername = userData['username'] ?? '';
 
             // Combine firstName and lastName
             _fullName = '${userData['firstName'] ?? ''} ${userData['lastName'] ?? ''}'.trim();
@@ -114,6 +126,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void saveChanges(BuildContext context) async {
+    // Check if there are any changes
+    if (firstNameController.text == _initialFirstName &&
+        lastNameController.text == _initialLastName &&
+        emailController.text == _initialEmail &&
+        contactController.text == _initialContact &&
+        fullNameController.text == _initialUsername) {
+      // If no changes were made, show a message and return early
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No changes detected')),
+      );
+      return; // Exit the function early since there are no changes
+    }
+
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('userId');
@@ -214,8 +239,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     _openCamera();
                                   },
                                   child: const Text('Take a Photo',
-                                      style:
-                                          TextStyle(color: Colors.blueAccent)),
+                                      style: TextStyle(color: Colors.blueAccent)),
                                 ),
                                 TextButton(
                                   onPressed: () {
@@ -223,8 +247,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     _openFilePicker();
                                   },
                                   child: const Text('Choose from Gallery',
-                                      style:
-                                          TextStyle(color: Colors.blueAccent)),
+                                      style: TextStyle(color: Colors.blueAccent)),
                                 ),
                               ],
                             ),

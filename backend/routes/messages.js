@@ -3,7 +3,7 @@ const router = express.Router();
 const Message = require('../models/Message');
 
 // Fetch messages by receiver (userId)
-router.get('/messages/:userId', async (req, res) => {
+router.get('/:userId', async (req, res) => {
   try {
     const messages = await Message.find({ receiver: req.params.userId }).sort({ timestamp: -1 });
     

@@ -65,7 +65,6 @@ class _ChatPageState extends State<ChatPage> {
                         return ListTile(
                           title: Text(message.text),
                           subtitle: Text('Sender: ${message.sender}, Receiver: ${message.receiver}'),
-                          trailing: Text(message.timestamp),
                         );
                       },
                     );
