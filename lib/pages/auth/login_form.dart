@@ -1,16 +1,11 @@
-// ignore_for_file: unused_element
-
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:sjq/constant/constant.dart';
 import 'dart:convert';
-import '../home/home.screen.dart'; // Import the HomeScreen
-import 'package:sjq/pages/auth/forgot_password_page.dart'; // Import the ForgotPasswordPage
-
-// Assuming these are defined somewhere in your themes file
+import 'package:shared_preferences/shared_preferences.dart';
+import '../home/home.screen.dart';
+import 'package:sjq/pages/auth/forgot_password_page.dart';
 import 'package:sjq/themes/themes.dart';
-
-// Assuming this is a separate widget in your project
 
 class LoginForm extends StatelessWidget {
   final GlobalKey<FormState> _formKey;
@@ -26,37 +21,38 @@ class LoginForm extends StatelessWidget {
 
   Future<void> _login(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
-      // Create a map with the login details
       Map<String, String> loginDetails = {
         'identifier': usernameOrEmailController.text,
         'password': passwordController.text,
       };
 
       try {
-        // Send login request to the server
         final response = await http.post(
-          Uri.parse('$BASE_URL/auth/login'), // Adjust the URL as needed
+          Uri.parse('$BASE_URL/auth/login'),
           headers: {'Content-Type': 'application/json'},
           body: json.encode(loginDetails),
         );
 
         if (response.statusCode == 200) {
-          
-          // On success, navigate to the HomeScreen
+          final responseData = json.decode(response.body);
+
+          // ✅ Store userId in SharedPreferences
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('userId', responseData['user']['_id']); // Adjust based on actual response
+
+          // ✅ Navigate to HomeScreen
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         } else {
-          // On failure, display an error message
           final errorResponse = json.decode(response.body);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(errorResponse['msg'] ?? 'Invalid credentials')),
           );
         }
       } catch (error) {
-        // Handle any errors that occur during the request
-        debugPrint('Login request error: $error');
+        debugPrint('Login error: $error');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('An error occurred. Please try again.')),
         );
@@ -118,13 +114,33 @@ class LoginForm extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () => _login(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              elevation: 5,
+            ),
+            child: const Text(
+              "LOGIN",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// Input Text Class
+// Text Input Field
 class InputText extends StatelessWidget {
   const InputText({
     super.key,
@@ -161,7 +177,7 @@ class InputText extends StatelessWidget {
   }
 }
 
-// Password Input Text Class with Toggle Visibility
+// Password Input Field
 class PasswordInputText extends StatefulWidget {
   const PasswordInputText({
     super.key,
@@ -177,7 +193,6 @@ class PasswordInputText extends StatefulWidget {
   final String? Function(String?)? validator;
 
   @override
-  // ignore: library_private_types_in_public_api
   _PasswordInputTextState createState() => _PasswordInputTextState();
 }
 
