@@ -4,4 +4,4 @@
 
 
 // ignore: constant_identifier_names
-const BASE_URL='https://nv-backend-chi.vercel.app//api';
+const BASE_URL='https://nv-backend-ca1w.onrender.com/api';

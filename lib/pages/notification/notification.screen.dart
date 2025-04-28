@@ -26,15 +26,24 @@ class _NotificationScreenState extends State<NotificationScreen> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? userId = prefs.getString('userId');
+      debugPrint('Loaded User ID from SharedPreferences: $userId');
 
       if (userId != null) {
+        final url = '$BASE_URL/notifications/$userId';
+        debugPrint('Calling notifications endpoint: $url');
+
         final response = await http.get(
-          Uri.parse('$BASE_URL/notifications/$userId'),
+          Uri.parse(url),
           headers: {'Content-Type': 'application/json'},
         );
 
+        debugPrint('Notification API Status Code: ${response.statusCode}');
+        debugPrint('Notification API Response Body: ${response.body}');
+
         if (response.statusCode == 200) {
           final List<dynamic> data = jsonDecode(response.body);
+          debugPrint('Decoded notification data: $data');
+
           setState(() {
             notifications = List<Map<String, dynamic>>.from(data);
           });

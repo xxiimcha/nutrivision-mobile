@@ -1,0 +1,2 @@
+C:/nutrivision-mobile/android/app/.cxx/Debug/3f503763/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/nutrivision-mobile/android/app/.cxx/Debug/3f503763/armeabi-v7a/CMakeFiles/rebuild_cache.dir
