@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:sjq/constant/constant.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,7 +39,11 @@ class LoginForm extends StatelessWidget {
 
           // ✅ Store userId in SharedPreferences
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setString('userId', responseData['user']['_id']); // Adjust based on actual response
+          final userId = responseData['userId'];
+          await prefs.setString('userId', userId);
+
+          // ✅ Send FCM token to backend
+          await _sendFcmTokenIfNeeded(userId);
 
           // ✅ Navigate to HomeScreen
           Navigator.pushReplacement(
@@ -62,6 +67,41 @@ class LoginForm extends StatelessWidget {
     }
   }
 
+Future<void> _sendFcmTokenIfNeeded(String userId) async {
+  try {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final String? savedToken = prefs.getString('fcmToken');
+
+    String? currentToken = await FirebaseMessaging.instance.getToken();
+    debugPrint('📲 Current FCM Token: $currentToken');
+
+    if (currentToken == null) {
+      debugPrint('❌ No FCM token available.');
+      return;
+    }
+
+    if (savedToken == currentToken) {
+      debugPrint('ℹ️ FCM token already sent previously. Skipping.');
+      return;
+    }
+
+    final response = await http.post(
+      Uri.parse('$BASE_URL/tokens/save-token'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'token': currentToken}),
+    );
+
+    if (response.statusCode == 200) {
+      await prefs.setString('fcmToken', currentToken); // Save locally
+      debugPrint('✅ FCM Token saved to server and stored locally.');
+    } else {
+      debugPrint('⚠️ Failed to save FCM Token: ${response.body}');
+    }
+  } catch (e) {
+    debugPrint('❌ Error sending FCM Token: $e');
+  }
+}
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -77,7 +117,7 @@ class LoginForm extends StatelessWidget {
               if (value == null || value.isEmpty) {
                 return 'Please enter username or email';
               } else if (value.length < 5) {
-                return 'Username or Email must be at least 5 characters';
+                return 'Must be at least 5 characters';
               }
               return null;
             },

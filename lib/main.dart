@@ -72,9 +72,10 @@ void setupFCM() async {
     String? token = await messaging.getToken();
     debugPrint('📲 FCM Token: $token');
 
-    if (token != null) {
-      await sendTokenToBackend(token);
-    }
+    // ❌ REMOVE this, handled after login instead:
+    // if (token != null) {
+    //   await sendTokenToBackend(token);
+    // }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('📩 Foreground message: ${message.notification?.title}');
@@ -94,7 +95,7 @@ void setupFCM() async {
               priority: Priority.high,
             ),
           ),
-          payload: 'notification', // Send payload for navigation
+          payload: 'notification',
         );
       }
     });
@@ -104,7 +105,6 @@ void setupFCM() async {
       navigatorKey.currentState?.pushNamed('/notifications');
     });
 
-    // If app was terminated and opened by tapping notification
     RemoteMessage? initialMessage = await messaging.getInitialMessage();
     if (initialMessage != null) {
       debugPrint('🧊 App started by tapping notification: ${initialMessage.notification?.title}');
@@ -113,7 +113,7 @@ void setupFCM() async {
   } else {
     debugPrint('❌ Notification permission denied.');
   }
-}
+} 
 
 Future<void> sendTokenToBackend(String token) async {
   try {
