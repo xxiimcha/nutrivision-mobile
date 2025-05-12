@@ -1,12 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:sjq/constant/constant.dart';
-import 'package:sjq/models/event.model.dart'; // Import your Event model
+import 'package:sjq/models/event.model.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// Create an instance of FlutterSecureStorage
 const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
 class HttpService {
   final String baseUrl = BASE_URL;
 
@@ -14,14 +16,8 @@ class HttpService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/signup'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'username': username,
-          'email': email,
-          'password': password,
-        }),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode({'username': username, 'email': email, 'password': password}),
       );
 
       debugPrint('Sign-up response status: ${response.statusCode}');
@@ -42,12 +38,8 @@ class HttpService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/send-otp'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'email': email,
-        }),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode({'email': email}),
       );
 
       debugPrint('Send OTP response status: ${response.statusCode}');
@@ -66,13 +58,8 @@ class HttpService {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/verify-otp'),
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
-        body: jsonEncode(<String, String>{
-          'email': email,
-          'otp': otp,
-        }),
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
+        body: jsonEncode({'email': email, 'otp': otp}),
       );
 
       debugPrint('Verify OTP response status: ${response.statusCode}');
@@ -89,33 +76,26 @@ class HttpService {
     }
   }
 
- Future<Map<String, dynamic>> login(String identifier, String password) async {
+Future<Map<String, dynamic>> login(String identifier, String password) async {
   try {
     final response = await http.post(
       Uri.parse('$baseUrl/auth/login'),
-      headers: <String, String>{
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode(<String, String>{
-        'identifier': identifier,  // Use 'identifier' instead of 'email' if your backend expects it
-        'password': password,
-      }),
+      headers: {'Content-Type': 'application/json; charset=UTF-8'},
+      body: jsonEncode({'identifier': identifier, 'password': password}),
     );
 
     debugPrint('Login response status: ${response.statusCode}');
     debugPrint('Login response body: ${response.body}');
 
     if (response.statusCode == 200) {
-      // Decode the response to retrieve user data
       final Map<String, dynamic> responseData = jsonDecode(response.body);
-      
-      // Assuming the userId is returned in the response, adjust the key as needed
-      final String userId = responseData['userId']; // Adjust this line based on your API response
+      final String userId = responseData['userId'];
 
-      // Save the userId in secure storage
-      await _secureStorage.write(key: 'userId', value: userId);
-      debugPrint('User ID saved to secure storage: $userId');
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('userId', userId); // ✅ ensure it's saved before continuing
+      debugPrint('✅ User ID saved to SharedPreferences: $userId');
 
+      await _sendFcmTokenToServer(userId);
       return responseData;
     } else {
       throw Exception('Failed to login: ${response.body}');
@@ -126,7 +106,32 @@ class HttpService {
   }
 }
 
-  // Fetch events from the server
+Future<void> _sendFcmTokenToServer(String userId) async {
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  final String? token = await _firebaseMessaging.getToken();
+
+  if (token == null) {
+    debugPrint('❌ FCM token is null.');
+    return;
+  }
+
+  debugPrint('📲 Sending FCM token to backend: $token');
+
+  final response = await http.post(
+    Uri.parse('$baseUrl/tokens/save-token'),
+    headers: {'Content-Type': 'application/json'},
+    body: jsonEncode({'userId': userId, 'token': token}),
+  );
+
+  if (response.statusCode == 200) {
+    debugPrint('✅ FCM token saved successfully on server.');
+  } else {
+    debugPrint('❌ Failed to send FCM token: ${response.body}');
+  }
+}
+
+
+
   Future<List<Event>> fetchEvents({String? date}) async {
     try {
       final uri = Uri.parse('$baseUrl/events').replace(queryParameters: {
@@ -135,9 +140,7 @@ class HttpService {
 
       final response = await http.get(
         uri,
-        headers: <String, String>{
-          'Content-Type': 'application/json; charset=UTF-8',
-        },
+        headers: {'Content-Type': 'application/json; charset=UTF-8'},
       );
 
       debugPrint('Fetch events response status: ${response.statusCode}');

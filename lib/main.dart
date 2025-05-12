@@ -56,7 +56,6 @@ void main() async {
 }
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
 void setupFCM() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;
 
@@ -69,13 +68,8 @@ void setupFCM() async {
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
     debugPrint('✅ Notification permission granted.');
 
-    String? token = await messaging.getToken();
-    debugPrint('📲 FCM Token: $token');
-
-    // ❌ REMOVE this, handled after login instead:
-    // if (token != null) {
-    //   await sendTokenToBackend(token);
-    // }
+    // Do NOT generate or log the token here.
+    // Token will be fetched and sent after successful login only.
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('📩 Foreground message: ${message.notification?.title}');
@@ -110,10 +104,12 @@ void setupFCM() async {
       debugPrint('🧊 App started by tapping notification: ${initialMessage.notification?.title}');
       navigatorKey.currentState?.pushNamed('/notifications');
     }
+
   } else {
     debugPrint('❌ Notification permission denied.');
   }
-} 
+}
+
 
 Future<void> sendTokenToBackend(String token) async {
   try {

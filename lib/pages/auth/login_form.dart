@@ -69,7 +69,7 @@ class LoginForm extends StatelessWidget {
 
 Future<void> _sendFcmTokenIfNeeded(String userId) async {
   try {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    final prefs = await SharedPreferences.getInstance();
     final String? savedToken = prefs.getString('fcmToken');
 
     String? currentToken = await FirebaseMessaging.instance.getToken();
@@ -81,26 +81,42 @@ Future<void> _sendFcmTokenIfNeeded(String userId) async {
     }
 
     if (savedToken == currentToken) {
-      debugPrint('ℹ️ FCM token already sent previously. Skipping.');
-      return;
-    }
-
-    final response = await http.post(
-      Uri.parse('$BASE_URL/tokens/save-token'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'userId': userId, 'token': currentToken}),
-    );
-
-    if (response.statusCode == 200) {
-      await prefs.setString('fcmToken', currentToken); // Save locally
-      debugPrint('✅ FCM Token saved to server and stored locally.');
+      debugPrint('ℹ️ Token already saved. Skipping.');
     } else {
-      debugPrint('⚠️ Failed to save FCM Token: ${response.body}');
+      final response = await http.post(
+        Uri.parse('$BASE_URL/tokens/save-token'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'userId': userId, 'token': currentToken}),
+      );
+
+      if (response.statusCode == 200) {
+        await prefs.setString('fcmToken', currentToken);
+        debugPrint('✅ FCM token saved successfully.');
+      } else {
+        debugPrint('⚠️ Server rejected FCM token: ${response.body}');
+      }
     }
+
+    // Ensure token is updated in the future too
+    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) async {
+      if (newToken != savedToken) {
+        debugPrint('🔁 Token refreshed: $newToken');
+        final res = await http.post(
+          Uri.parse('$BASE_URL/tokens/save-token'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'userId': userId, 'token': newToken}),
+        );
+        if (res.statusCode == 200) {
+          await prefs.setString('fcmToken', newToken);
+          debugPrint('✅ Refreshed token updated on server.');
+        }
+      }
+    });
   } catch (e) {
-    debugPrint('❌ Error sending FCM Token: $e');
+    debugPrint('❌ Token sending failed: $e');
   }
 }
+
 
   @override
   Widget build(BuildContext context) {
