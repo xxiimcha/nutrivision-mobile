@@ -35,6 +35,7 @@ dependencies:
   http_parser: ^4.0.2
   
   path: any
+  audioplayers: ^6.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -52,6 +53,7 @@ flutter:
     - assets/
     - assets/avatar/
     - assets/data/
+    - assets/sounds/incoming.mp3
 
   fonts:
     - family: CustomIcons

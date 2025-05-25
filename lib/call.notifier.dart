@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO;
+import 'package:audioplayers/audioplayers.dart';
 import '../pages/chat/call.dart'; // Your WebView for Agora call
 
 class CallNotifier extends ChangeNotifier {
@@ -10,6 +12,9 @@ class CallNotifier extends ChangeNotifier {
   IO.Socket? socket;
   bool _isDialogShowing = false;
   BuildContext? _context;
+
+  Timer? _pollingTimer;
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   CallNotifier() {
     _init();
@@ -24,7 +29,6 @@ class CallNotifier extends ChangeNotifier {
     }
   }
 
-  // Attach context to show dialogs later
   void attachContext(BuildContext context) {
     _context = context;
   }
@@ -38,7 +42,7 @@ class CallNotifier extends ChangeNotifier {
     socket = IO.io(
       'https://nv-backend-ca1w.onrender.com',
       IO.OptionBuilder()
-          .setTransports(['websocket']) // important for Flutter
+          .setTransports(['websocket']) // For Flutter compatibility
           .disableAutoConnect()
           .build(),
     );
@@ -56,16 +60,30 @@ class CallNotifier extends ChangeNotifier {
 
     socket!.on('incoming-call', (data) {
       if (!_isDialogShowing && _context != null) {
-        final String roomLink = data['roomLink'];
+        final String roomLink = data['channelName'];
         final String callerId = data['callerId'];
         final String callType = data['callType'] ?? 'video';
 
         debugPrint('Incoming $callType call from $callerId');
         _isDialogShowing = true;
 
-        showCallDialog(_context!, roomLink);
+        _playRingtone();
+        showCallDialog(_context!, roomLink, stopRingtone);
       }
     });
+  }
+
+  void startPolling(BuildContext context) {
+    attachContext(context);
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      debugPrint("Polling for incoming call...");
+    });
+  }
+
+  void stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
   }
 
   void resetDialogState() {
@@ -75,6 +93,17 @@ class CallNotifier extends ChangeNotifier {
   void disposeSocket() {
     socket?.disconnect();
     socket?.destroy();
+    stopPolling();
+    stopRingtone();
+  }
+
+  void _playRingtone() async {
+    await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+    await _audioPlayer.play(AssetSource('sounds/incoming_call.mp3'));
+  }
+
+  void stopRingtone() async {
+    await _audioPlayer.stop();
   }
 
   @override
@@ -84,7 +113,7 @@ class CallNotifier extends ChangeNotifier {
   }
 }
 
-void showCallDialog(BuildContext context, String roomLink) {
+void showCallDialog(BuildContext context, String roomLink, VoidCallback stopRingtone) {
   showDialog(
     context: context,
     barrierDismissible: false,
@@ -96,6 +125,7 @@ void showCallDialog(BuildContext context, String roomLink) {
           TextButton(
             child: const Text('Decline'),
             onPressed: () {
+              stopRingtone();
               Navigator.of(context).pop();
               context.read<CallNotifier>().resetDialogState();
             },
@@ -103,6 +133,7 @@ void showCallDialog(BuildContext context, String roomLink) {
           ElevatedButton(
             child: const Text('Accept'),
             onPressed: () {
+              stopRingtone();
               Navigator.of(context).pop();
               Navigator.push(
                 context,
@@ -117,6 +148,7 @@ void showCallDialog(BuildContext context, String roomLink) {
     },
   ).then((_) {
     if (context.mounted) {
+      stopRingtone();
       context.read<CallNotifier>().resetDialogState();
     }
   });
