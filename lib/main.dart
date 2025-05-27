@@ -13,31 +13,23 @@ import 'dart:convert';
 import 'firebase_options.dart';
 import 'call.notifier.dart';
 
-final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   debugPrint('🔔 Background message: ${message.messageId}');
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  const AndroidInitializationSettings androidInitSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-
-  const InitializationSettings initSettings =
-      InitializationSettings(android: androidInitSettings);
+  const AndroidInitializationSettings androidInitSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initSettings = InitializationSettings(android: androidInitSettings);
 
   await flutterLocalNotificationsPlugin.initialize(
     initSettings,
@@ -49,7 +41,6 @@ void main() async {
     },
   );
 
-
   runApp(const MainApp());
 
   setupFCM();
@@ -58,23 +49,35 @@ void main() async {
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void setupFCM() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-  NotificationSettings settings = await messaging.requestPermission(
-    alert: true,
-    badge: true,
-    sound: true,
-  );
+  NotificationSettings settings = await messaging.requestPermission(alert: true, badge: true, sound: true);
 
   if (settings.authorizationStatus == AuthorizationStatus.authorized) {
     debugPrint('✅ Notification permission granted.');
-
-    // Do NOT generate or log the token here.
-    // Token will be fetched and sent after successful login only.
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       debugPrint('📩 Foreground message: ${message.notification?.title}');
       RemoteNotification? notification = message.notification;
       AndroidNotification? android = message.notification?.android;
+
+      final data = message.data;
+      final type = data['type'];
+
+      if (type == 'incoming-call') {
+        final callerId = data['callerId'];
+        final channelName = data['channelName'];
+        final token = data['token'];
+
+        final context = navigatorKey.currentContext;
+        if (context != null) {
+          final callNotifier = Provider.of<CallNotifier>(context, listen: false);
+          callNotifier.showIncomingCallDialog(
+            callerId: callerId,
+            channelName: channelName,
+            token: token,
+          );
+        }
+        return;
+      }
 
       if (notification != null && android != null) {
         flutterLocalNotificationsPlugin.show(
@@ -104,12 +107,10 @@ void setupFCM() async {
       debugPrint('🧊 App started by tapping notification: ${initialMessage.notification?.title}');
       navigatorKey.currentState?.pushNamed('/notifications');
     }
-
   } else {
     debugPrint('❌ Notification permission denied.');
   }
 }
-
 
 Future<void> sendTokenToBackend(String token) async {
   try {
@@ -124,10 +125,7 @@ Future<void> sendTokenToBackend(String token) async {
     final response = await http.post(
       Uri.parse('$BASE_URL/tokens/save-token'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'userId': userId,
-        'token': token,
-      }),
+      body: jsonEncode({'userId': userId, 'token': token}),
     );
 
     if (response.statusCode == 200) {
@@ -146,20 +144,16 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => CallNotifier()),
-      ],
+      providers: [ChangeNotifierProvider(create: (_) => CallNotifier())],
       child: MaterialApp(
         title: 'Nutrivision',
         debugShowCheckedModeBanner: false,
-        navigatorKey: navigatorKey, // <<< Important for navigation outside BuildContext
+        navigatorKey: navigatorKey,
         theme: ThemeData(
-          textTheme: GoogleFonts.lexendDecaTextTheme(
-            Theme.of(context).textTheme,
-          ),
+          textTheme: GoogleFonts.lexendDecaTextTheme(Theme.of(context).textTheme),
         ),
         routes: Routes.routes,
-        initialRoute: '/', 
+        initialRoute: '/',
       ),
     );
   }
