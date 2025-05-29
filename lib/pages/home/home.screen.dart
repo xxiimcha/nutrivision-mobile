@@ -21,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // Start polling for calls as soon as HomeScreen is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Ensuring context is fully initialized
-      Provider.of<CallNotifier>(context, listen: false).startPolling(context);
+      // Provider.of<CallNotifier>(context, listen: false).startPolling(context);
     });
   }
 
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     // Stop polling when the widget is disposed
-    Provider.of<CallNotifier>(context, listen: false).stopPolling();
+    //Provider.of<CallNotifier>(context, listen: false).stopPolling();
     super.dispose();
   }
 }

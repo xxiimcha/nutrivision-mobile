@@ -6,12 +6,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 import 'package:sjq/constant/constant.dart';
 import 'package:sjq/routes.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'firebase_options.dart';
-import 'call.notifier.dart';
+import 'pages/call/incoming.dart'; // Ensure this is the correct path
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -21,11 +20,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   debugPrint('🔔 Background message: ${message.messageId}');
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
   const AndroidInitializationSettings androidInitSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -46,7 +46,6 @@ void main() async {
   setupFCM();
 }
 
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void setupFCM() async {
   FirebaseMessaging messaging = FirebaseMessaging.instance;
   NotificationSettings settings = await messaging.requestPermission(alert: true, badge: true, sound: true);
@@ -66,14 +65,19 @@ void setupFCM() async {
         final callerId = data['callerId'];
         final channelName = data['channelName'];
         final token = data['token'];
-
         final context = navigatorKey.currentContext;
+
         if (context != null) {
-          final callNotifier = Provider.of<CallNotifier>(context, listen: false);
-          callNotifier.showIncomingCallDialog(
-            callerId: callerId,
-            channelName: channelName,
-            token: token,
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => CallIncomingScreen(
+                callerName: callerId,
+                callerRole: 'Video Call',
+                channelName: channelName,
+                token: token,
+              ),
+            ),
           );
         }
         return;
@@ -143,18 +147,15 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => CallNotifier())],
-      child: MaterialApp(
-        title: 'Nutrivision',
-        debugShowCheckedModeBanner: false,
-        navigatorKey: navigatorKey,
-        theme: ThemeData(
-          textTheme: GoogleFonts.lexendDecaTextTheme(Theme.of(context).textTheme),
-        ),
-        routes: Routes.routes,
-        initialRoute: '/',
+    return MaterialApp(
+      title: 'Nutrivision',
+      debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
+      theme: ThemeData(
+        textTheme: GoogleFonts.lexendDecaTextTheme(Theme.of(context).textTheme),
       ),
+      routes: Routes.routes,
+      initialRoute: '/',
     );
   }
 }

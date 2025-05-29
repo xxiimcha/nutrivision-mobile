@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+import 'call_page.dart';
 
 class CallIncomingScreen extends StatefulWidget {
   final String callerName;
   final String callerRole;
-  final VoidCallback onAccept;
-  final VoidCallback onDecline;
+  final String channelName;
+  final String token;
 
   const CallIncomingScreen({
     super.key,
     required this.callerName,
     required this.callerRole,
-    required this.onAccept,
-    required this.onDecline,
+    required this.channelName,
+    required this.token,
   });
 
   @override
@@ -22,6 +26,8 @@ class _CallIncomingScreenState extends State<CallIncomingScreen>
     with TickerProviderStateMixin {
   late AnimationController _namePulseController;
   late AnimationController _buttonScaleController;
+
+  final String apiUrl = 'https://your-api.com/api/calls/status'; // ✅ Replace this
 
   @override
   void initState() {
@@ -45,6 +51,40 @@ class _CallIncomingScreenState extends State<CallIncomingScreen>
     _namePulseController.dispose();
     _buttonScaleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _sendDeclineSignal() async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'channelName': widget.channelName,
+          'status': 'declined',
+          // Optionally add userId if needed by your API
+        }),
+      );
+      debugPrint('✅ Decline signal sent: ${response.statusCode}');
+    } catch (e) {
+      debugPrint('❌ Failed to send decline signal: $e');
+    }
+  }
+
+  void _onAcceptCall() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CallPage(
+          channelName: widget.channelName,
+          token: widget.token,
+        ),
+      ),
+    );
+  }
+
+  void _onDeclineCall() async {
+    await _sendDeclineSignal();
+    Navigator.pop(context); // dismiss the screen
   }
 
   @override
@@ -94,7 +134,7 @@ class _CallIncomingScreenState extends State<CallIncomingScreen>
                   child: FloatingActionButton(
                     heroTag: 'decline',
                     backgroundColor: Colors.red,
-                    onPressed: widget.onDecline,
+                    onPressed: _onDeclineCall,
                     child: const Icon(Icons.call_end, size: 30),
                   ),
                 ),
@@ -105,7 +145,7 @@ class _CallIncomingScreenState extends State<CallIncomingScreen>
                   child: FloatingActionButton(
                     heroTag: 'accept',
                     backgroundColor: Colors.green,
-                    onPressed: widget.onAccept,
+                    onPressed: _onAcceptCall,
                     child: const Icon(Icons.call, size: 30),
                   ),
                 ),
